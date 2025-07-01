@@ -1,0 +1,55 @@
+services:
+  http:
+    container_name: ${APP_NAME}_http
+    build:
+      context: .
+      target: dev
+      dockerfile: ./docker/http/Dockerfile
+    environment:
+      HTTP_PORT: ${HTTP_PORT}
+      POSTGRES_URL: ${POSTGRES_URL}
+      VALKEY_URL: ${VALKEY_URL}
+    ports:
+      - "${HTTP_PORT}:${HTTP_PORT}"
+    volumes:
+      - .:/app
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - valkey
+      - migrate
+  migrate:
+    container_name: ${APP_NAME}_migrate
+    build:
+      context: .
+      dockerfile: ./docker/migrator/Dockerfile
+    environment:
+      POSTGRES_URL: ${POSTGRES_URL}
+    restart: no
+    depends_on:
+      - postgres
+  postgres:
+    container_name: ${APP_NAME}_postgres
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+  valkey:
+    container_name: ${APP_NAME}_valkey
+    image: valkey/valkey:7-alpine
+    ports:
+      - "${VALKEY_PORT}:${VALKEY_PORT}"
+    volumes:
+      - valkey_data:/data
+    restart: unless-stopped
+    command: valkey-server --appendonly yes
+volumes:
+  http_data:
+  postgres_data:
+  valkey_data:
