@@ -38,7 +38,7 @@ func main() {
 		log.Println("migrations completed successfully")
 	case "down":
 		log.Printf("rolling back %d migration(s)...", *steps)
-		if err := m.Steps(*steps); err != nil {
+		if err := m.Steps(-*steps); err != nil {
 			log.Fatalf("failed to rollback migrations: %v", err)
 		}
 	default:

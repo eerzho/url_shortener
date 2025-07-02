@@ -10,39 +10,37 @@ import (
 	"github.com/valkey-io/valkey-go"
 )
 
-type App struct {
-	Config    *config.Config
-	Container *simpledi.Container
-}
+func Setup() *simpledi.Container {
+	c := simpledi.NewContainer()
 
-func NewApp() *App {
-	cfg := config.NewConfig()
-	container := simpledi.NewContainer()
-
-	container.Register("postgres", nil, func() any {
-		return utils.NewPostgresCLient(cfg.Postgres.Url)
+	c.Register("config", nil, func() any {
+		return config.NewConfig()
 	})
-	container.Register("valkey", nil, func() any {
-		return utils.NewValkeyClient(cfg.Valkey.Url)
+	c.Register("postgres", []string{"config"}, func() any {
+		return utils.NewPostgresCLient(
+			c.Get("config").(*config.Config).Postgres.Url,
+		)
+	})
+	c.Register("valkey", []string{"config"}, func() any {
+		return utils.NewValkeyClient(
+			c.Get("config").(*config.Config).Valkey.Url,
+		)
 	})
 
-	err := container.Resolve()
+	err := c.Resolve()
 	if err != nil {
 		log.Fatalf("failed to resolve dependencies: %v", err)
 	}
 
-	return &App{
-		Config:    cfg,
-		Container: container,
-	}
+	return c
 }
 
-func (a *App) Close() {
-	if db, ok := a.Container.Get("db").(*sql.DB); ok {
+func Close(c *simpledi.Container) {
+	if db, ok := c.Get("postgres").(*sql.DB); ok {
 		db.Close()
 	}
 
-	if cache, ok := a.Container.Get("cache").(valkey.Client); ok {
+	if cache, ok := c.Get("valkey").(valkey.Client); ok {
 		cache.Close()
 	}
 }

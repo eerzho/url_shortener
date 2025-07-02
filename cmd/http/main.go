@@ -9,18 +9,19 @@ import (
 	"syscall"
 	"time"
 	"url_shortener/internal/app"
+	"url_shortener/internal/config"
 	"url_shortener/internal/routes"
 )
 
 func main() {
-	a := app.NewApp()
-	defer a.Close()
+	c := app.Setup()
+	defer app.Close(c)
 
 	mux := http.NewServeMux()
-	routes.Setup(mux, a.Container)
+	routes.Setup(mux, c)
 
 	server := &http.Server{
-		Addr:         ":" + a.Config.Http.Port,
+		Addr:         ":" + c.Get("config").(*config.Config).Http.Port,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -28,7 +29,7 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("starting http server on port: %s", a.Config.Http.Port)
+		log.Printf("starting http server on http://localhost%s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("http server failed: %v", err)
 		}

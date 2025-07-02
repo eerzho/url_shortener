@@ -15,7 +15,16 @@ import (
 
 var validate *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
 
-func Shorten(container *simpledi.Container) http.HandlerFunc {
+type Url struct {
+	Id        int       `db:"id" json:"id"`
+	ShortCode string    `db:"short_code" json:"short_code"`
+	LongUrl   string    `db:"long_url" json:"long_url"`
+	Clicks    int       `db:"clicks" json:"clicks"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
+func Create(c *simpledi.Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			LongUrl string `json:"long_url" validate:"required,url"`
@@ -33,22 +42,17 @@ func Shorten(container *simpledi.Container) http.HandlerFunc {
 			return
 		}
 
+		postgres := c.Get("postgres").(*sqlx.DB)
+
+		var url Url
 		shortCode := fmt.Sprintf("%x", sha256.Sum256([]byte(request.LongUrl)))[:6]
-
-		var url struct {
-			Id        int       `db:"id" json:"id"`
-			ShortCode string    `db:"short_code" json:"short_code"`
-			LongUrl   string    `db:"long_url" json:"long_url"`
-			Clicks    int       `db:"clicks" json:"clicks"`
-			CreatedAt time.Time `db:"created_at" json:"created_at"`
-			UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
-		}
-
-		postgres := container.Get("postgres").(*sqlx.DB)
-
 		err = postgres.Get(
 			&url,
-			"insert into urls (short_code, long_url) values ($1, $2) returning id, short_code, long_url, clicks, created_at, updated_at",
+			`
+				insert into urls (short_code, long_url)
+				values ($1, $2)
+				returning *
+			`,
 			shortCode, request.LongUrl,
 		)
 		if err != nil {
@@ -56,7 +60,63 @@ func Shorten(container *simpledi.Container) http.HandlerFunc {
 			return
 		}
 
+		successResponse(w, http.StatusCreated, &url)
+	}
+}
+
+func Show(c *simpledi.Container) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		shortCode := r.PathValue("short_code")
+
+		if shortCode == "" {
+			errorResponse(w, fmt.Errorf("short_code is required"))
+			return
+		}
+
+		postgres := c.Get("postgres").(*sqlx.DB)
+
+		var url Url
+		err := postgres.Get(
+			&url,
+			`select * from urls where short_code = $1`,
+			shortCode,
+		)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
 		successResponse(w, http.StatusOK, &url)
+	}
+}
+
+func Redirect(c *simpledi.Container) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		shortCode := r.PathValue("short_code")
+
+		if shortCode == "" {
+			errorResponse(w, fmt.Errorf("short_code is required"))
+			return
+		}
+
+		postgres := c.Get("postgres").(*sqlx.DB)
+
+		var url Url
+		err := postgres.Get(
+			&url,
+			`
+				update urls set clicks = clicks + 1, updated_at = now()
+				where short_code = $1
+				returning *
+			`,
+			shortCode,
+		)
+		if err != nil {
+			errorResponse(w, err)
+			return
+		}
+
+		http.Redirect(w, r, url.LongUrl, http.StatusFound)
 	}
 }
 
