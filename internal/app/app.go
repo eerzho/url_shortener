@@ -4,9 +4,13 @@ import (
 	"database/sql"
 	"log"
 	"url_shortener/internal/config"
+	"url_shortener/internal/repository"
+	"url_shortener/internal/repository/postgres"
+	"url_shortener/internal/service"
 	"url_shortener/internal/utils"
 
 	"github.com/eerzho/simpledi"
+	"github.com/jmoiron/sqlx"
 	"github.com/valkey-io/valkey-go"
 )
 
@@ -24,6 +28,16 @@ func Setup() *simpledi.Container {
 	c.Register("valkey", []string{"config"}, func() any {
 		return utils.NewValkeyClient(
 			c.Get("config").(*config.Config).Valkey.Url,
+		)
+	})
+	c.Register("url_repository", []string{"postgres"}, func() any {
+		return postgres.NewUrl(
+			c.Get("postgres").(*sqlx.DB),
+		)
+	})
+	c.Register("url_service", []string{"url_repository"}, func() any {
+		return service.NewUrl(
+			c.Get("url_repository").(repository.Url),
 		)
 	})
 
