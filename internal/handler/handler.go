@@ -3,64 +3,32 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"url_shortener/internal/service"
 
+	"github.com/eerzho/simpledi"
 	"github.com/go-playground/validator/v10"
 )
 
+func Setup(mux *http.ServeMux, c *simpledi.Container) {
+	mux.HandleFunc("POST /urls", urlCreate(c.Get("url_service").(service.Url)))
+	mux.HandleFunc("GET /urls/{short_code}", urlShow(c.Get("url_service").(service.Url)))
+	mux.HandleFunc("GET /{short_code}", urlRedirect(c.Get("url_service").(service.Url)))
+}
+
 var validate *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
 
-func Create(urlService *service.Url) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var request struct {
-			LongUrl string `json:"long_url" validate:"required,url"`
-		}
-
-		err := json.NewDecoder(r.Body).Decode(&request)
-		if err != nil {
-			errorResponse(w, err)
-			return
-		}
-
-		err = validate.Struct(&request)
-		if err != nil {
-			errorResponse(w, err)
-			return
-		}
-
-		url, err := urlService.Create(r.Context(), request.LongUrl)
-		if err != nil {
-			errorResponse(w, err)
-			return
-		}
-
-		successResponse(w, http.StatusCreated, url)
+func decodeAndValidate(request any, body io.Reader) error {
+	err := json.NewDecoder(body).Decode(request)
+	if err != nil {
+		return err
 	}
-}
-
-func Show(urlService *service.Url) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		url, err := urlService.GetByShortCode(r.Context(), r.PathValue("short_code"))
-		if err != nil {
-			errorResponse(w, err)
-			return
-		}
-
-		successResponse(w, http.StatusOK, url)
+	err = validate.Struct(request)
+	if err != nil {
+		return nil
 	}
-}
-
-func Redirect(urlService *service.Url) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		url, err := urlService.GetByShortCodeAndIncrementClicks(r.Context(), r.PathValue("short_code"))
-		if err != nil {
-			errorResponse(w, err)
-			return
-		}
-
-		http.Redirect(w, r, url.LongUrl, http.StatusFound)
-	}
+	return nil
 }
 
 func successResponse(w http.ResponseWriter, status int, data any) {

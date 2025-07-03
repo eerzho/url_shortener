@@ -8,17 +8,23 @@ import (
 	"url_shortener/internal/repository"
 )
 
-type Url struct {
+type Url interface {
+	Create(ctx context.Context, longUrl string) (*model.Url, error)
+	GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error)
+	GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error)
+}
+
+type url struct {
 	urlRepository repository.Url
 }
 
-func NewUrl(urlRepository repository.Url) *Url {
-	return &Url{
+func NewUrl(urlRepository repository.Url) Url {
+	return &url{
 		urlRepository: urlRepository,
 	}
 }
 
-func (u *Url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
+func (u *url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
 	if longUrl == "" {
 		return nil, fmt.Errorf("longUrl is empty")
 	}
@@ -30,7 +36,7 @@ func (u *Url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
 	return url, nil
 }
 
-func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
 	if shortCode == "" {
 		return nil, fmt.Errorf("shortCode is empty")
 	}
@@ -41,7 +47,7 @@ func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 	return url, nil
 }
 
-func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
 	if shortCode == "" {
 		return nil, fmt.Errorf("shortCode is empty")
 	}

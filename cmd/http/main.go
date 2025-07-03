@@ -10,7 +10,7 @@ import (
 	"time"
 	"url_shortener/internal/app"
 	"url_shortener/internal/config"
-	"url_shortener/internal/routes"
+	"url_shortener/internal/handler"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	defer app.Close(c)
 
 	mux := http.NewServeMux()
-	routes.Setup(mux, c)
+	handler.Setup(mux, c)
 
 	server := &http.Server{
 		Addr:         ":" + c.Get("config").(*config.Config).Http.Port,
