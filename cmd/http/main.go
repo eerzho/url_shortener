@@ -8,9 +8,12 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	_ "url_shortener/docs"
 	"url_shortener/internal/app"
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
+
+	swagger "github.com/swaggo/http-swagger"
 )
 
 func main() {
@@ -19,6 +22,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	handler.Setup(mux, c)
+	mux.Handle("/swagger/", swagger.WrapHandler)
 
 	server := &http.Server{
 		Addr:         ":" + c.Get("config").(*config.Config).Http.Port,

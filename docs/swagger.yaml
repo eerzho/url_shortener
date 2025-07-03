@@ -1,0 +1,101 @@
+definitions:
+  request.CreateUrl:
+    properties:
+      long_url:
+        type: string
+    required:
+    - long_url
+    type: object
+  response.Error:
+    properties:
+      error:
+        type: string
+      errors:
+        items:
+          type: string
+        type: array
+    type: object
+  response.Url:
+    properties:
+      clicks:
+        type: integer
+      created_at:
+        type: integer
+      id:
+        type: integer
+      long_url:
+        type: string
+      short_code:
+        type: string
+      updated_at:
+        type: integer
+    type: object
+info:
+  contact: {}
+paths:
+  /{short_code}:
+    get:
+      parameters:
+      - description: short code
+        in: path
+        name: short_code
+        required: true
+        type: string
+      responses:
+        "302":
+          description: Found
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+      summary: redirect to long url
+      tags:
+      - url
+  /urls:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: create short code
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/request.CreateUrl'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.Url'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+      summary: create short code
+      tags:
+      - url
+  /urls/{short_code}:
+    get:
+      parameters:
+      - description: short code
+        in: path
+        name: short_code
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.Url'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Error'
+      summary: get url info
+      tags:
+      - url
+swagger: "2.0"
