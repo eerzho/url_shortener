@@ -5,6 +5,7 @@ RUN go mod download
 COPY . .
 
 FROM base AS dev
+RUN go install github.com/swaggo/swag/cmd/swag@latest
 CMD ["go", "run", "./cmd/http"]
 
 FROM base AS builder
