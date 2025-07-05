@@ -12,6 +12,7 @@ import (
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
 
+	"github.com/eerzho/simpledi"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	swagger "github.com/swaggo/http-swagger"
@@ -44,15 +45,15 @@ func init() {
 }
 
 func main() {
-	c := app.Setup()
-	defer app.Close(c)
+	app.Setup()
+	defer app.Close()
 
 	mux := http.NewServeMux()
-	handler.Setup(mux, c)
+	handler.Setup(mux)
 	mux.Handle("/swagger/", swagger.WrapHandler)
 
 	server := &http.Server{
-		Addr:         ":" + c.Get("config").(*config.Config).Http.Port,
+		Addr:         ":" + simpledi.Get("config").(*config.Config).Http.Port,
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -79,5 +80,5 @@ func main() {
 		log.Fatal().Err(err).Msg("server forced to shutdown")
 	}
 
-	log.Info().Msg("server exited")
+	log.Info().Msg("http server exited")
 }

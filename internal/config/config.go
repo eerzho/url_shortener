@@ -1,9 +1,8 @@
 package config
 
 import (
-	"log"
-
 	"github.com/caarlos0/env/v11"
+	"github.com/rs/zerolog/log"
 )
 
 type (
@@ -29,7 +28,7 @@ type (
 func NewConfig() *Config {
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {
-		log.Fatalf("failed to parse to env: %v", err)
+		log.Fatal().Err(err).Msg("failed to parse to env")
 	}
 	return &cfg
 }

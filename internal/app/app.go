@@ -2,7 +2,6 @@ package app
 
 import (
 	"database/sql"
-	"log"
 	"url_shortener/internal/config"
 	"url_shortener/internal/repository"
 	"url_shortener/internal/repository/postgres"
@@ -11,50 +10,42 @@ import (
 
 	"github.com/eerzho/simpledi"
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 	"github.com/valkey-io/valkey-go"
 )
 
-func Setup() *simpledi.Container {
-	c := simpledi.NewContainer()
-
-	c.Register("config", nil, func() any {
+func Setup() {
+	simpledi.Register("config", nil, func() any {
 		return config.NewConfig()
 	})
-	c.Register("postgres", []string{"config"}, func() any {
+	simpledi.Register("postgres", []string{"config"}, func() any {
 		return utils.NewPostgresCLient(
-			c.Get("config").(*config.Config).Postgres.Url,
+			simpledi.Get("config").(*config.Config).Postgres.Url,
 		)
 	})
-	c.Register("valkey", []string{"config"}, func() any {
+	simpledi.Register("valkey", []string{"config"}, func() any {
 		return utils.NewValkeyClient(
-			c.Get("config").(*config.Config).Valkey.Url,
+			simpledi.Get("config").(*config.Config).Valkey.Url,
 		)
 	})
-	c.Register("url_repository", []string{"postgres"}, func() any {
+	simpledi.Register("url_repository", []string{"postgres"}, func() any {
 		return postgres.NewUrl(
-			c.Get("postgres").(*sqlx.DB),
+			simpledi.Get("postgres").(*sqlx.DB),
 		)
 	})
-	c.Register("url_service", []string{"url_repository"}, func() any {
+	simpledi.Register("url_service", []string{"url_repository"}, func() any {
 		return service.NewUrl(
-			c.Get("url_repository").(repository.Url),
+			simpledi.Get("url_repository").(repository.Url),
 		)
 	})
 
-	err := c.Resolve()
+	err := simpledi.Resolve()
 	if err != nil {
-		log.Fatalf("failed to resolve dependencies: %v", err)
+		log.Fatal().Err(err).Msg("failed to resolve dependencies")
 	}
-
-	return c
 }
 
-func Close(c *simpledi.Container) {
-	if db, ok := c.Get("postgres").(*sql.DB); ok {
-		db.Close()
-	}
-
-	if cache, ok := c.Get("valkey").(valkey.Client); ok {
-		cache.Close()
-	}
+func Close() {
+	simpledi.Get("postgres").(*sql.DB).Close()
+	simpledi.Get("valkey").(valkey.Client).Close()
 }

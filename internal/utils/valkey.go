@@ -1,8 +1,7 @@
 package utils
 
 import (
-	"log"
-
+	"github.com/rs/zerolog/log"
 	"github.com/valkey-io/valkey-go"
 )
 
@@ -11,8 +10,7 @@ func NewValkeyClient(url string) valkey.Client {
 		InitAddress: []string{url},
 	})
 	if err != nil {
-		log.Fatalf("failed to connect to valkey: %v", err)
+		log.Fatal().Err(err).Msg("failed to connect to valkey")
 	}
-
 	return client
 }

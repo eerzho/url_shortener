@@ -14,10 +14,10 @@ import (
 // @title           url shortener api
 // @version         1.0
 // @BasePath        /
-func Setup(mux *http.ServeMux, c *simpledi.Container) {
-	mux.HandleFunc("POST /urls", urlCreate(c.Get("url_service").(service.Url)))
-	mux.HandleFunc("GET /urls/{short_code}", urlShow(c.Get("url_service").(service.Url)))
-	mux.HandleFunc("GET /{short_code}", urlRedirect(c.Get("url_service").(service.Url)))
+func Setup(mux *http.ServeMux) {
+	mux.HandleFunc("POST /urls", urlCreate(simpledi.Get("url_service").(service.Url)))
+	mux.HandleFunc("GET /urls/{short_code}", urlShow(simpledi.Get("url_service").(service.Url)))
+	mux.HandleFunc("GET /{short_code}", urlRedirect(simpledi.Get("url_service").(service.Url)))
 }
 
 var validate *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
