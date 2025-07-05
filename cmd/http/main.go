@@ -15,7 +15,6 @@ import (
 	"github.com/eerzho/simpledi"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-	swagger "github.com/swaggo/http-swagger"
 )
 
 func init() {
@@ -50,7 +49,6 @@ func main() {
 
 	mux := http.NewServeMux()
 	handler.Setup(mux)
-	mux.Handle("/swagger/", swagger.WrapHandler)
 
 	server := &http.Server{
 		Addr:         ":" + simpledi.Get("config").(*config.Config).Http.Port,
