@@ -6,6 +6,7 @@ services:
       target: dev
       dockerfile: ./docker/http/Dockerfile
     environment:
+      APP_ENV: ${APP_ENV}
       HTTP_PORT: ${HTTP_PORT}
       POSTGRES_URL: ${POSTGRES_URL}
       VALKEY_URL: ${VALKEY_URL}

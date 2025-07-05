@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,8 +12,36 @@ import (
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	swagger "github.com/swaggo/http-swagger"
 )
+
+func init() {
+	env := os.Getenv("APP_ENV")
+	zerolog.TimeFieldFormat = time.RFC3339
+
+	if env == "prod" {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	} else {
+		zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	}
+
+	if env == "prod" || env == "stage" {
+		log.Logger = zerolog.New(os.Stdout).With().
+			Timestamp().
+			Str("service", "url_shortener").
+			Str("app_env", env).
+			Logger()
+	} else {
+		log.Logger = log.Output(zerolog.ConsoleWriter{
+			Out:        os.Stdout,
+			TimeFormat: time.RFC3339,
+		}).With().
+			Str("service", "url_shortener").
+			Logger()
+	}
+}
 
 func main() {
 	c := app.Setup()
@@ -33,9 +60,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("starting http server on http://localhost%s", server.Addr)
+		log.Info().Str("port", server.Addr).Msg("starting http server")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("http server failed: %v", err)
+			log.Fatal().Err(err).Msg("http server failed")
 		}
 	}()
 
@@ -43,14 +70,14 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Println("shutting down server...")
+	log.Info().Msg("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Fatalf("server forced to shutdown: %v", err)
+		log.Fatal().Err(err).Msg("server forced to shutdown")
 	}
 
-	log.Println("server exited")
+	log.Info().Msg("server exited")
 }
