@@ -6,6 +6,7 @@ import (
 	"url_shortener/internal/repository"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/rs/zerolog/log"
 )
 
 type url struct {
@@ -17,6 +18,12 @@ func NewUrl(p *sqlx.DB) repository.Url {
 }
 
 func (u *url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
+	logger := log.Ctx(ctx).With().
+		Str("op", "repository.postgres.url.Create").
+		Str("long_url", longUrl).
+		Str("short_code", shortCode).
+		Logger()
+	logger.Debug().Msg("creating url")
 	var url model.Url
 	err := u.p.GetContext(
 		ctx,
@@ -29,12 +36,19 @@ func (u *url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url
 		longUrl, shortCode,
 	)
 	if err != nil {
+		logger.Debug().Err(err).Msg("failed to create url")
 		return nil, err
 	}
+	logger.Debug().Int("id", url.Id).Msg("created url")
 	return &url, nil
 }
 
 func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+	logger := log.Ctx(ctx).With().
+		Str("op", "repository.postgres.url.GetByShortCode").
+		Str("short_code", shortCode).
+		Logger()
+	logger.Debug().Msg("getting url")
 	var url model.Url
 	err := u.p.GetContext(
 		ctx,
@@ -43,12 +57,19 @@ func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 		shortCode,
 	)
 	if err != nil {
+		logger.Debug().Err(err).Msg("failed to get url")
 		return nil, err
 	}
+	logger.Debug().Int("id", url.Id).Msg("got url")
 	return &url, nil
 }
 
 func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
+	logger := log.Ctx(ctx).With().
+		Str("op", "repository.postgres.url.GetByShortCodeAndIncrementClicks").
+		Str("short_code", shortCode).
+		Logger()
+	logger.Debug().Msg("getting url")
 	var url model.Url
 	err := u.p.GetContext(
 		ctx,
@@ -61,7 +82,9 @@ func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode st
 		shortCode,
 	)
 	if err != nil {
+		logger.Debug().Err(err).Msg("failed to get url")
 		return nil, err
 	}
+	logger.Debug().Int("id", url.Id).Msg("got url")
 	return &url, nil
 }
