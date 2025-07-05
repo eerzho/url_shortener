@@ -17,15 +17,16 @@ services:
     depends_on:
       - postgres
       - valkey
-      - migrator
-  migrator:
-    container_name: migrator_${APP_NAME}
+      - migrate
+  migrate:
+    container_name: migrate_${APP_NAME}
     build:
       context: .
-      target: dev
-      dockerfile: ./docker/migrator/Dockerfile
+      dockerfile: ./docker/migrate/Dockerfile
     environment:
-      POSTGRES_URL: ${POSTGRES_URL}
+      DB_URL: ${POSTGRES_URL}
+    volumes:
+      - ./migrations:/migrations
     restart: no
     depends_on:
       - postgres
