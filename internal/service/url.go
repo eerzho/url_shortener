@@ -28,7 +28,7 @@ func NewUrl(urlRepository repository.Url) Url {
 }
 
 func (u *url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
-	logger := log.Ctx(ctx).With().
+	logger := log.With().
 		Str("op", "service.url.Create").
 		Str("long_url", longUrl).
 		Logger()
@@ -50,7 +50,7 @@ func (u *url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
 }
 
 func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
-	logger := log.Ctx(ctx).With().
+	logger := log.With().
 		Str("op", "service.url.GetByShortCode").
 		Str("short_code", shortCode).
 		Logger()
@@ -70,7 +70,7 @@ func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 }
 
 func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
-	logger := log.Ctx(ctx).With().
+	logger := log.With().
 		Str("op", "service.url.GetByShortCodeAndIncrementClicks").
 		Str("short_code", shortCode).
 		Logger()
