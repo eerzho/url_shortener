@@ -3,7 +3,9 @@ package service
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
+	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 	"url_shortener/internal/repository"
 )
@@ -53,16 +55,17 @@ func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode st
 }
 
 func (u *url) generateShortCode(ctx context.Context, longUrl string) (string, error) {
-	var mainErr error
 	input := longUrl
 	for attempts := range 5 {
 		shortCode := fmt.Sprintf("%x", sha256.Sum256([]byte(input)))[:6]
 		_, err := u.urlRepository.GetByShortCode(ctx, shortCode)
-		if err == nil {
-			return shortCode, nil
+		if err != nil {
+			if errors.Is(err, constant.ErrNotFound) {
+				return shortCode, nil
+			}
+			return "", err
 		}
-		mainErr = err
 		input = fmt.Sprintf("%s_%d", longUrl, attempts)
 	}
-	return "", mainErr
+	return "", constant.ErrAlreadyExists
 }
