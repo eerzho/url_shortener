@@ -2,10 +2,14 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 	"url_shortener/internal/repository"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 )
 
@@ -37,6 +41,12 @@ func (u *url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url
 	)
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to create url")
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
+			if pqErr.Code == "23505" {
+				return nil, constant.ErrAlreadyExists
+			}
+		}
 		return nil, err
 	}
 	logger.Debug().Int("id", url.Id).Msg("created url")
@@ -58,6 +68,9 @@ func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 	)
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to get url")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constant.ErrNotFound
+		}
 		return nil, err
 	}
 	logger.Debug().Int("id", url.Id).Msg("got url")
@@ -83,6 +96,9 @@ func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode st
 	)
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to get url")
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constant.ErrNotFound
+		}
 		return nil, err
 	}
 	logger.Debug().Int("id", url.Id).Msg("got url")
