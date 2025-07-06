@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"url_shortener/internal/model"
 	"url_shortener/internal/repository"
@@ -26,9 +25,6 @@ func NewUrl(urlRepository repository.Url) Url {
 }
 
 func (u *url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
-	if longUrl == "" {
-		return nil, errors.New("logn_url is empty")
-	}
 	shortCode, err := u.generateShortCode(ctx, longUrl)
 	if err != nil {
 		return nil, err
@@ -41,9 +37,6 @@ func (u *url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
 }
 
 func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
-	if shortCode == "" {
-		return nil, errors.New("short_code is empty")
-	}
 	url, err := u.urlRepository.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, err
@@ -52,9 +45,6 @@ func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 }
 
 func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
-	if shortCode == "" {
-		return nil, errors.New("short_code is empty")
-	}
 	url, err := u.urlRepository.GetByShortCodeAndIncrementClicks(ctx, shortCode)
 	if err != nil {
 		return nil, err
@@ -63,14 +53,16 @@ func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode st
 }
 
 func (u *url) generateShortCode(ctx context.Context, longUrl string) (string, error) {
+	var mainErr error
 	input := longUrl
 	for attempts := range 5 {
 		shortCode := fmt.Sprintf("%x", sha256.Sum256([]byte(input)))[:6]
-		url, _ := u.urlRepository.GetByShortCode(ctx, shortCode)
-		if url == nil {
+		_, err := u.urlRepository.GetByShortCode(ctx, shortCode)
+		if err == nil {
 			return shortCode, nil
 		}
+		mainErr = err
 		input = fmt.Sprintf("%s_%d", longUrl, attempts)
 	}
-	return "", errors.New("failed to generate unique short code")
+	return "", mainErr
 }
