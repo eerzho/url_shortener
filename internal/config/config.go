@@ -13,15 +13,15 @@ type (
 	}
 
 	Http struct {
-		Port string `env:"HTTP_PORT"`
+		Port string `env:"HTTP_PORT,required"`
 	}
 
 	Postgres struct {
-		Url string `env:"POSTGRES_URL"`
+		Url string `env:"POSTGRES_URL,required"`
 	}
 
 	Valkey struct {
-		Url string `env:"VALKEY_URL"`
+		Url string `env:"VALKEY_URL,required"`
 	}
 )
 
