@@ -48,6 +48,7 @@ func successResponse(w http.ResponseWriter, status int, data any) {
 
 func errorResponse(w http.ResponseWriter, err error) {
 	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-	json.NewEncoder(w).Encode(response.NewError(err))
+	errResponse := response.NewError(err)
+	w.WriteHeader(errResponse.StatusCode)
+	json.NewEncoder(w).Encode(errResponse)
 }
