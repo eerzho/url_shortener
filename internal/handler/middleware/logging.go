@@ -72,6 +72,8 @@ func Logging(next http.Handler) http.Handler {
 
 func generateId() string {
 	b := make([]byte, 8)
-	rand.Read(b)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
 	return fmt.Sprintf("%x", b)
 }
