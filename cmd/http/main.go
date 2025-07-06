@@ -30,7 +30,6 @@ func init() {
 	if env == "prod" || env == "stage" {
 		log.Logger = zerolog.New(os.Stdout).With().
 			Timestamp().
-			Str("service", "url_shortener").
 			Str("app_env", env).
 			Logger()
 	} else {
@@ -38,7 +37,7 @@ func init() {
 			Out:        os.Stdout,
 			TimeFormat: time.RFC3339,
 		}).With().
-			Str("service", "url_shortener").
+			Str("app_env", env).
 			Logger()
 	}
 }
