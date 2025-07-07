@@ -3,6 +3,7 @@ package valkey
 import (
 	"context"
 	"encoding/json"
+	"sync"
 	"time"
 	"url_shortener/internal/model"
 	"url_shortener/internal/repository"
@@ -12,62 +13,125 @@ import (
 )
 
 const (
-	urlTtl    = 24 * time.Hour
-	urlPrefix = "url:"
+	urlTtl         = 24 * time.Hour
+	urlPrefix      = "url:"
+	urlWorkerCount = 3
+	bufferSize     = 500
 )
 
-type url struct {
-	c valkey.Client
-	r repository.Url
+type Url struct {
+	client      valkey.Client
+	repo        repository.Url
+	wg          sync.WaitGroup
+	doneCh      chan struct{}
+	incrementCh chan string
 }
 
-func NewUrl(c valkey.Client, r repository.Url) repository.Url {
-	return &url{c: c, r: r}
+func NewUrl(client valkey.Client, repo repository.Url) *Url {
+	u := &Url{
+		client:      client,
+		repo:        repo,
+		doneCh:      make(chan struct{}),
+		incrementCh: make(chan string, bufferSize),
+	}
+	u.startWorkers()
+	return u
 }
 
-func (u *url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
-	return u.r.Create(ctx, longUrl, shortCode)
+func (u *Url) Close() {
+	close(u.doneCh)
+	close(u.incrementCh)
+	u.wg.Wait()
 }
 
-func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
-	return u.r.GetByShortCode(ctx, shortCode)
+func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
+	return u.repo.Create(ctx, longUrl, shortCode)
 }
 
-func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+	return u.repo.GetByShortCode(ctx, shortCode)
+}
+
+func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
 	logger := log.With().
 		Str("op", "repository.valkey.GetByShortCodeAndIncrementClicks").
 		Str("short_code", shortCode).
 		Logger()
+
 	logger.Debug().Msg("getting url from cache")
+
 	url, err := u.getFromCache(ctx, shortCode)
 	if err == nil {
 		logger.Debug().Int("id", url.Id).Msg("got url from cache")
-		go u.incrementClicks(context.Background(), shortCode)
+
+		u.scheduleIncrement(shortCode)
+
 		return url, nil
 	}
+
 	logger.Debug().Err(err).Msg("failed to get url from cache")
+
 	logger.Debug().Msg("getting url from repository")
-	url, err = u.r.GetByShortCode(ctx, shortCode)
+
+	url, err = u.repo.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		logger.Debug().Err(err).Msg("failed to get url from repository")
 		return nil, err
 	}
-	logger.Debug().Msg("caching url")
-	err = u.addToCache(ctx, url)
-	if err != nil {
-		logger.Debug().Err(err).Msg("failed to cache url")
-	}
+
+	go func() {
+		logger.Debug().Msg("caching url")
+
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		err = u.addToCache(ctx, url)
+		if err != nil {
+			logger.Debug().Err(err).Msg("failed to cache url")
+		}
+	}()
+
 	logger.Debug().Int("id", url.Id).Msg("got url from repository")
+
 	return url, nil
 }
 
-func (u *url) incrementClicks(ctx context.Context, shortCode string) {
+func (u *Url) scheduleIncrement(shortCode string) {
+	select {
+	case u.incrementCh <- shortCode:
+	default:
+		log.Warn().Str("short_code", shortCode).Msg("increment channel is full, skipping increment")
+	}
+}
+
+func (u *Url) startWorkers() {
+	for range urlWorkerCount {
+		u.wg.Add(1)
+		go u.worker()
+	}
+}
+
+func (u *Url) worker() {
+	defer u.wg.Done()
+	for {
+		select {
+		case shortCode := <-u.incrementCh:
+			u.incrementClicks(shortCode)
+		case <-u.doneCh:
+			return
+		}
+	}
+}
+
+func (u *Url) incrementClicks(shortCode string) {
 	logger := log.With().
 		Str("op", "repository.valkey.url.incrementClicks").
 		Str("short_code", shortCode).
 		Logger()
 	logger.Debug().Msg("incrementing clicks")
-	_, err := u.r.GetByShortCodeAndIncrementClicks(ctx, shortCode)
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	_, err := u.repo.GetByShortCodeAndIncrementClicks(ctx, shortCode)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to increment clicks")
 	} else {
@@ -75,9 +139,9 @@ func (u *url) incrementClicks(ctx context.Context, shortCode string) {
 	}
 }
 
-func (u *url) getFromCache(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *Url) getFromCache(ctx context.Context, shortCode string) (*model.Url, error) {
 	key := urlPrefix + shortCode
-	data, err := u.c.Do(ctx, u.c.B().Get().Key(key).Build()).ToString()
+	data, err := u.client.Do(ctx, u.client.B().Get().Key(key).Build()).ToString()
 	if err != nil {
 		return nil, err
 	}
@@ -89,15 +153,15 @@ func (u *url) getFromCache(ctx context.Context, shortCode string) (*model.Url, e
 	return &url, nil
 }
 
-func (u *url) addToCache(ctx context.Context, url *model.Url) error {
+func (u *Url) addToCache(ctx context.Context, url *model.Url) error {
 	data, err := json.Marshal(url)
 	if err != nil {
 		return err
 	}
 	key := urlPrefix + url.ShortCode
-	err = u.c.Do(
+	err = u.client.Do(
 		ctx,
-		u.c.B().
+		u.client.B().
 			Set().
 			Key(key).
 			Value(string(data)).

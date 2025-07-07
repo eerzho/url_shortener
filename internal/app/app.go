@@ -41,7 +41,7 @@ func Setup() {
 	})
 	simpledi.Register("url_service", []string{"url_valkey_repository"}, func() any {
 		return service.NewUrl(
-			simpledi.Get("url_valkey_repository").(repository.Url),
+			simpledi.Get("url_valkey_repository").(*valkey.Url),
 		)
 	})
 
@@ -54,4 +54,5 @@ func Setup() {
 func Close() {
 	simpledi.Get("postgres").(*sqlx.DB).Close()
 	simpledi.Get("valkey").(valkeygo.Client).Close()
+	simpledi.Get("url_valkey_repository").(*valkey.Url).Close()
 }
