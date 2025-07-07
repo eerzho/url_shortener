@@ -2,9 +2,8 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
+	"crypto/rand"
 	"errors"
-	"fmt"
 	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 )
@@ -20,7 +19,7 @@ func NewUrl(urlRepository UrlRepository) *Url {
 }
 
 func (u *Url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
-	shortCode, err := u.generateShortCode(ctx, longUrl)
+	shortCode, err := u.generateShortCode(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -47,18 +46,26 @@ func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode st
 	return url, nil
 }
 
-func (u *Url) generateShortCode(ctx context.Context, longUrl string) (string, error) {
-	input := longUrl
-	for attempts := range 5 {
-		shortCode := fmt.Sprintf("%x", sha256.Sum256([]byte(input)))[:6]
-		_, err := u.urlRepository.GetByShortCode(ctx, shortCode)
-		if err != nil {
-			if errors.Is(err, constant.ErrNotFound) {
-				return shortCode, nil
-			}
+func (u *Url) generateShortCode(ctx context.Context) (string, error) {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const length = 6
+	const attempts = 10
+
+	for range attempts {
+		b := make([]byte, length)
+		if _, err := rand.Read(b); err != nil {
 			return "", err
 		}
-		input = fmt.Sprintf("%s_%d", longUrl, attempts)
+
+		for i := range b {
+			b[i] = charset[b[i]%byte(len(charset))]
+		}
+
+		shortCode := string(b)
+		_, err := u.urlRepository.GetByShortCode(ctx, shortCode)
+		if errors.Is(err, constant.ErrNotFound) {
+			return shortCode, nil
+		}
 	}
 	return "", constant.ErrAlreadyExists
 }
