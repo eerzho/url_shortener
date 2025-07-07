@@ -39,9 +39,9 @@ func NewUrl(client valkey.Client, repo service.UrlRepository) *Url {
 }
 
 func (u *Url) Close() {
-	close(u.doneCh)
 	close(u.incrementCh)
 	u.wg.Wait()
+	close(u.doneCh)
 }
 
 func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
@@ -82,10 +82,7 @@ func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode st
 	go func() {
 		logger.Debug().Msg("caching url")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-		defer cancel()
-
-		err = u.addToCache(ctx, url)
+		err = u.addToCache(context.Background(), url)
 		if err != nil {
 			logger.Debug().Err(err).Msg("failed to cache url")
 		}
@@ -113,9 +110,13 @@ func (u *Url) startWorkers() {
 
 func (u *Url) worker() {
 	defer u.wg.Done()
+
 	for {
 		select {
-		case shortCode := <-u.incrementCh:
+		case shortCode, ok := <-u.incrementCh:
+			if !ok {
+				return
+			}
 			u.incrementClicks(shortCode)
 		case <-u.doneCh:
 			return
@@ -128,10 +129,10 @@ func (u *Url) incrementClicks(shortCode string) {
 		Str("op", "repository.valkey.url.incrementClicks").
 		Str("short_code", shortCode).
 		Logger()
+
 	logger.Debug().Msg("incrementing clicks")
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-	_, err := u.repo.GetByShortCodeAndIncrementClicks(ctx, shortCode)
+
+	_, err := u.repo.GetByShortCodeAndIncrementClicks(context.Background(), shortCode)
 	if err != nil {
 		logger.Error().Err(err).Msg("failed to increment clicks")
 	} else {
@@ -145,11 +146,13 @@ func (u *Url) getFromCache(ctx context.Context, shortCode string) (*model.Url, e
 	if err != nil {
 		return nil, err
 	}
+
 	var url model.Url
 	err = json.Unmarshal([]byte(data), &url)
 	if err != nil {
 		return nil, err
 	}
+
 	return &url, nil
 }
 
@@ -158,6 +161,7 @@ func (u *Url) addToCache(ctx context.Context, url *model.Url) error {
 	if err != nil {
 		return err
 	}
+
 	key := urlPrefix + url.ShortCode
 	err = u.client.Do(
 		ctx,
@@ -171,5 +175,6 @@ func (u *Url) addToCache(ctx context.Context, url *model.Url) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
