@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"url_shortener/internal/handler/request"
 	"url_shortener/internal/handler/response"
-	"url_shortener/internal/service"
 )
 
 // urlCreate godoc
@@ -16,7 +15,7 @@ import (
 // @Success      201    {object}  response.Url
 // @Failure      400    {object}  response.Error
 // @Router       /urls [post]
-func urlCreate(urlService service.Url) http.HandlerFunc {
+func urlCreate(urlService UrlService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request request.CreateUrl
 
@@ -44,7 +43,7 @@ func urlCreate(urlService service.Url) http.HandlerFunc {
 // @Success      200    {object}  response.Url
 // @Failure      400    {object}  response.Error
 // @Router       /urls/{short_code} [get]
-func urlShow(urlService service.Url) http.HandlerFunc {
+func urlShow(urlService UrlService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		url, err := urlService.GetByShortCode(r.Context(), r.PathValue("short_code"))
 		if err != nil {
@@ -63,7 +62,7 @@ func urlShow(urlService service.Url) http.HandlerFunc {
 // @Success      302
 // @Failure      400    {object}  response.Error
 // @Router       /{short_code} [get]
-func urlRedirect(urlService service.Url) http.HandlerFunc {
+func urlRedirect(urlService UrlService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		url, err := urlService.GetByShortCodeAndIncrementClicks(r.Context(), r.PathValue("short_code"))
 		if err != nil {

@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 	"url_shortener/internal/model"
-	"url_shortener/internal/repository"
+	"url_shortener/internal/service"
 
 	"github.com/rs/zerolog/log"
 	"github.com/valkey-io/valkey-go"
@@ -21,13 +21,13 @@ const (
 
 type Url struct {
 	client      valkey.Client
-	repo        repository.Url
+	repo        service.UrlRepository
 	wg          sync.WaitGroup
 	doneCh      chan struct{}
 	incrementCh chan string
 }
 
-func NewUrl(client valkey.Client, repo repository.Url) *Url {
+func NewUrl(client valkey.Client, repo service.UrlRepository) *Url {
 	u := &Url{
 		client:      client,
 		repo:        repo,

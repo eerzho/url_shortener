@@ -17,7 +17,7 @@ import (
 // @version         1.0
 // @BasePath        /
 func Setup(mux *http.ServeMux) {
-	urlService := simpledi.Get("url_service").(service.Url)
+	urlService := simpledi.Get("url_service").(*service.Url)
 
 	mux.Handle("/swagger/", middleware.ChainFunc(swagger.WrapHandler, middleware.Logging))
 
