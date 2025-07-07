@@ -6,22 +6,21 @@ import (
 	"errors"
 	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
-	"url_shortener/internal/repository"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 )
 
-type url struct {
+type Url struct {
 	p *sqlx.DB
 }
 
-func NewUrl(p *sqlx.DB) repository.Url {
-	return &url{p: p}
+func NewUrl(p *sqlx.DB) *Url {
+	return &Url{p: p}
 }
 
-func (u *url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
+func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
 	logger := log.With().
 		Str("op", "repository.postgres.url.Create").
 		Str("long_url", longUrl).
@@ -53,7 +52,7 @@ func (u *url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url
 	return &url, nil
 }
 
-func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
 	logger := log.With().
 		Str("op", "repository.postgres.url.GetByShortCode").
 		Str("short_code", shortCode).
@@ -77,7 +76,7 @@ func (u *url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 	return &url, nil
 }
 
-func (u *url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
 	logger := log.With().
 		Str("op", "repository.postgres.url.GetByShortCodeAndIncrementClicks").
 		Str("short_code", shortCode).

@@ -2,7 +2,6 @@ package app
 
 import (
 	"url_shortener/internal/config"
-	"url_shortener/internal/repository"
 	"url_shortener/internal/repository/postgres"
 	"url_shortener/internal/repository/valkey"
 	"url_shortener/internal/service"
@@ -36,7 +35,7 @@ func Setup() {
 	simpledi.Register("url_valkey_repository", []string{"valkey", "url_postgres_repository"}, func() any {
 		return valkey.NewUrl(
 			simpledi.Get("valkey").(valkeygo.Client),
-			simpledi.Get("url_postgres_repository").(repository.Url),
+			simpledi.Get("url_postgres_repository").(*postgres.Url),
 		)
 	})
 	simpledi.Register("url_service", []string{"url_valkey_repository"}, func() any {
