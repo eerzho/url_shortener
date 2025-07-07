@@ -1,6 +1,7 @@
 package response
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"url_shortener/internal/constant"
@@ -23,6 +24,10 @@ func NewError(err error) *Error {
 		errResponse.StatusCode = http.StatusConflict
 	case errors.Is(err, constant.ErrNotFound):
 		errResponse.StatusCode = http.StatusNotFound
+	case errors.Is(err, context.DeadlineExceeded):
+		errResponse.StatusCode = http.StatusRequestTimeout
+	case errors.Is(err, context.Canceled):
+		errResponse.StatusCode = http.StatusRequestTimeout
 	}
 
 	var validateErrs validator.ValidationErrors
