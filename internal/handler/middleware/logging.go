@@ -2,12 +2,11 @@ package middleware
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
 	"net/http"
 	"time"
 	"url_shortener/internal/constant"
 
+	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -71,9 +70,5 @@ func Logging(next http.Handler) http.Handler {
 }
 
 func generateId() string {
-	b := make([]byte, 8)
-	if _, err := rand.Read(b); err != nil {
-		return fmt.Sprintf("%x", time.Now().UnixNano())
-	}
-	return fmt.Sprintf("%x", b)
+	return uuid.New().String()
 }
