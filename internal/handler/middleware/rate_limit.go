@@ -9,24 +9,9 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type safeLimiter struct {
-	limiter *rate.Limiter
-	mu      sync.Mutex
-}
-
-func newSafeLimiter(limiter *rate.Limiter) *safeLimiter {
-	return &safeLimiter{limiter: limiter}
-}
-
-func (s *safeLimiter) allow() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.limiter.Allow()
-}
-
 type node struct {
 	key   string
-	value *safeLimiter
+	value *rate.Limiter
 	prev  *node
 	next  *node
 }
@@ -54,7 +39,7 @@ func newLruCache(capacity int) *lruCache {
 	}
 }
 
-func (l *lruCache) getOrPut(key string) *safeLimiter {
+func (l *lruCache) getOrPut(key string) *rate.Limiter {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -70,7 +55,7 @@ func (l *lruCache) getOrPut(key string) *safeLimiter {
 		l.remove(l.tail.prev)
 	}
 
-	value := newSafeLimiter(rate.NewLimiter(rate.Limit(10), 20))
+	value := rate.NewLimiter(rate.Limit(10), 20)
 	item = &node{key: key, value: value}
 	l.addToHead(item)
 	l.data[key] = item
@@ -113,7 +98,7 @@ func RateLimit(next http.Handler) http.Handler {
 		ip := getIp(r)
 
 		limiter := getCache().getOrPut(ip)
-		if !limiter.allow() {
+		if !limiter.Allow() {
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
 		}
