@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 
@@ -21,6 +22,9 @@ func NewUrl(p *sqlx.DB) *Url {
 }
 
 func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	logger := log.With().
 		Str("op", "repository.postgres.url.Create").
 		Str("long_url", longUrl).
@@ -53,6 +57,9 @@ func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url
 }
 
 func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	logger := log.With().
 		Str("op", "repository.postgres.url.GetByShortCode").
 		Str("short_code", shortCode).
@@ -77,6 +84,9 @@ func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 }
 
 func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
+	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
 	logger := log.With().
 		Str("op", "repository.postgres.url.GetByShortCodeAndIncrementClicks").
 		Str("short_code", shortCode).
