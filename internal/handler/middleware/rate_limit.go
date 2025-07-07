@@ -96,13 +96,23 @@ func (l *lruCache) remove(item *node) {
 	next.prev = prev
 }
 
-var cache = newLruCache(10_000)
+var (
+	cache     *lruCache
+	cacheOnce sync.Once
+)
+
+func getCache() *lruCache {
+	cacheOnce.Do(func() {
+		cache = newLruCache(10_000)
+	})
+	return cache
+}
 
 func RateLimit(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := getIp(r)
 
-		limiter := cache.getOrPut(ip)
+		limiter := getCache().getOrPut(ip)
 		if !limiter.allow() {
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
