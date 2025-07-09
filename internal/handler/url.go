@@ -18,19 +18,16 @@ import (
 func urlCreate(urlService UrlService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request request.CreateUrl
-
 		err := decodeAndValidate(&request, r.Body)
 		if err != nil {
 			errorResponse(w, err)
 			return
 		}
-
 		url, err := urlService.Create(r.Context(), request.LongUrl)
 		if err != nil {
 			errorResponse(w, err)
 			return
 		}
-
 		successResponse(w, http.StatusCreated, response.NewUrl(url))
 	}
 }
@@ -50,7 +47,6 @@ func urlShow(urlService UrlService) http.HandlerFunc {
 			errorResponse(w, err)
 			return
 		}
-
 		successResponse(w, http.StatusOK, response.NewUrl(url))
 	}
 }
@@ -69,7 +65,6 @@ func urlRedirect(urlService UrlService) http.HandlerFunc {
 			errorResponse(w, err)
 			return
 		}
-
 		http.Redirect(w, r, url.LongUrl, http.StatusFound)
 	}
 }
