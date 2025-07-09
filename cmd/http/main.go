@@ -19,6 +19,9 @@ import (
 
 func init() {
 	env := os.Getenv("APP_ENV")
+	if env == "" {
+		env = "dev"
+	}
 	zerolog.TimeFieldFormat = time.RFC3339
 
 	if env == "prod" {
