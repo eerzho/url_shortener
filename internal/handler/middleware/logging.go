@@ -1,13 +1,10 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"time"
-	"url_shortener/internal/constant"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -31,44 +28,28 @@ func (rw *responseWriter) Write(b []byte) (int, error) {
 func Logging(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		requestId := generateId()
-		rw := &responseWriter{ResponseWriter: w}
-		logger := log.With().
-			Str("request_id", requestId).
-			Str("method", r.Method).
-			Str("path", r.URL.Path).
-			Str("query", r.URL.RawQuery).
-			Str("user_agent", r.UserAgent()).
-			Str("remote_addr", r.RemoteAddr).
-			Str("referer", r.Referer()).
-			Logger()
-
-		ctx := context.WithValue(r.Context(), constant.RequestIdKey, requestId)
-		r = r.WithContext(ctx)
+		requestId := uuid.New().String()
 
 		w.Header().Set("X-Request-ID", requestId)
+		rw := &responseWriter{ResponseWriter: w}
 
+		logger := log.With().
+			Str("ip", getIp(r)).
+			Str("path", r.URL.Path).
+			Str("method", r.Method).
+			Str("query", r.URL.RawQuery).
+			Str("request_id", requestId).
+			Str("user_agent", r.UserAgent()).
+			Int("request_size", int(r.ContentLength)).
+			Logger()
 		logger.Info().Msg("request started")
 
 		next.ServeHTTP(rw, r)
 
-		var level zerolog.Level
-		if rw.statusCode >= 500 {
-			level = zerolog.ErrorLevel
-		} else if rw.statusCode >= 400 {
-			level = zerolog.WarnLevel
-		} else {
-			level = zerolog.InfoLevel
-		}
-
-		logger.WithLevel(level).
+		logger.Info().
+			Int("response_size", rw.size).
 			Int("status_code", rw.statusCode).
-			Int("size", rw.size).
 			Dur("duration", time.Since(start)).
 			Msg("request finished")
 	})
-}
-
-func generateId() string {
-	return uuid.New().String()
 }
