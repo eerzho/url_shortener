@@ -50,7 +50,6 @@ func (u *Url) generateShortCode(ctx context.Context) (string, error) {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	const length = 6
 	const attempts = 10
-
 	for range attempts {
 		b := make([]byte, length)
 		if _, err := rand.Read(b); err != nil {
