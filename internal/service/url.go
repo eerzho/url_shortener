@@ -2,26 +2,32 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
+	"crypto/sha256"
 	"errors"
-	"url_shortener/internal/constant"
+	"fmt"
 	"url_shortener/internal/model"
 )
 
 type Url struct {
-	urlRepository UrlRepository
+	urlRepository   UrlRepository
+	clickRepository ClickRepository
 }
 
-func NewUrl(urlRepository UrlRepository) *Url {
+func NewUrl(urlRepository UrlRepository, clickRepository ClickRepository) *Url {
 	return &Url{
-		urlRepository: urlRepository,
+		urlRepository:   urlRepository,
+		clickRepository: clickRepository,
 	}
 }
 
-func (u *Url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
-	shortCode, err := u.generateShortCode(ctx)
+func (u *Url) Create(ctx context.Context, longUrl, ip, userAgent string) (*model.Url, error) {
+	shortCode := u.generateShortCode(longUrl, ip, userAgent)
+	exists, err := u.urlRepository.ExistsByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, err
+	}
+	if exists {
+		return nil, errors.New("short code already exists")
 	}
 	url, err := u.urlRepository.Create(ctx, longUrl, shortCode)
 	if err != nil {
@@ -30,41 +36,28 @@ func (u *Url) Create(ctx context.Context, longUrl string) (*model.Url, error) {
 	return url, nil
 }
 
-func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *Url) Click(ctx context.Context, shortCode, ip, userAgent string) (*model.Url, error) {
 	url, err := u.urlRepository.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, err
 	}
-	return url, nil
-}
-
-func (u *Url) GetByShortCodeAndIncrementClicks(ctx context.Context, shortCode string) (*model.Url, error) {
-	url, err := u.urlRepository.GetByShortCodeAndIncrementClicks(ctx, shortCode)
+	_, err = u.clickRepository.Create(ctx, url.Id, ip, userAgent) // TODO: run in worker pool
 	if err != nil {
 		return nil, err
 	}
 	return url, nil
 }
 
-func (u *Url) generateShortCode(ctx context.Context) (string, error) {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 6
-	const attempts = 10
-	for range attempts {
-		b := make([]byte, length)
-		if _, err := rand.Read(b); err != nil {
-			return "", err
-		}
-
-		for i := range b {
-			b[i] = charset[b[i]%byte(len(charset))]
-		}
-
-		shortCode := string(b)
-		_, err := u.urlRepository.GetByShortCode(ctx, shortCode)
-		if errors.Is(err, constant.ErrNotFound) {
-			return shortCode, nil
-		}
+func (u *Url) GetStats(ctx context.Context, shortCode string) (*model.UrlWithClicksCount, error) {
+	url, err := u.urlRepository.GetWithClicksCountByShortCode(ctx, shortCode)
+	if err != nil {
+		return nil, err
 	}
-	return "", constant.ErrAlreadyExists
+	return url, nil
+}
+
+func (u *Url) generateShortCode(longUrl, ip, userAgent string) string {
+	key := fmt.Sprintf("%s_%s_%s", longUrl, ip, userAgent)
+	shortCode := fmt.Sprintf("%x", sha256.Sum256([]byte(key)))
+	return shortCode[:6]
 }
