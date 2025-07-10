@@ -2,6 +2,7 @@ package app
 
 import (
 	"url_shortener/internal/config"
+	"url_shortener/internal/handler"
 	"url_shortener/internal/handler/middleware"
 	"url_shortener/internal/repository/postgres"
 	"url_shortener/internal/service"
@@ -14,6 +15,7 @@ import (
 )
 
 func Setup() {
+	// utils
 	simpledi.Register("config", nil, func() any {
 		return config.NewConfig()
 	})
@@ -27,21 +29,51 @@ func Setup() {
 			simpledi.Get("config").(*config.Config).Valkey.Url,
 		)
 	})
+
+	// repository
 	simpledi.Register("url_postgres_repository", []string{"postgres"}, func() any {
 		return postgres.NewUrl(
 			simpledi.Get("postgres").(*sqlx.DB),
 		)
 	})
-	simpledi.Register("url_service", []string{"url_postgres_repository"}, func() any {
-		return service.NewUrl(
-			simpledi.Get("url_postgres_repository").(*postgres.Url),
+	simpledi.Register("click_postgres_repository", []string{"postgres"}, func() any {
+		return postgres.NewClick(
+			simpledi.Get("postgres").(*sqlx.DB),
 		)
 	})
-	simpledi.Register("rate_limiter_middleware", nil, func() any {
-		return middleware.NewRateLimiter(1_000, 10, 20)
+
+	// service
+	simpledi.Register("url_service", []string{"url_postgres_repository", "click_postgres_repository"}, func() any {
+		return service.NewUrl(
+			simpledi.Get("url_postgres_repository").(*postgres.Url),
+			simpledi.Get("click_postgres_repository").(*postgres.Click),
+		)
 	})
-	simpledi.Register("logger_middleware", nil, func() any {
-		return middleware.NewLogger()
+	simpledi.Register("ip_service", nil, func() any {
+		return service.NewIp()
+	})
+
+	// middleware
+	simpledi.Register("rate_limiter_middleware", []string{"ip_service"}, func() any {
+		return middleware.NewRateLimiter(
+			simpledi.Get("ip_service").(*service.Ip),
+			10,
+			20,
+			1_000,
+		)
+	})
+	simpledi.Register("logger_middleware", []string{"ip_service"}, func() any {
+		return middleware.NewLogger(
+			simpledi.Get("ip_service").(*service.Ip),
+		)
+	})
+
+	// handler
+	simpledi.Register("url_handler", []string{"url_service", "ip_service"}, func() any {
+		return handler.NewUrl(
+			simpledi.Get("url_service").(*service.Url),
+			simpledi.Get("ip_service").(*service.Ip),
+		)
 	})
 
 	err := simpledi.Resolve()
