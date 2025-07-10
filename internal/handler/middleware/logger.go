@@ -8,24 +8,14 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-	size       int
+type Logger struct {
 }
 
-func (rw *responseWriter) WriteHeader(statusCode int) {
-	rw.statusCode = statusCode
-	rw.ResponseWriter.WriteHeader(statusCode)
+func NewLogger() *Logger {
+	return &Logger{}
 }
 
-func (rw *responseWriter) Write(b []byte) (int, error) {
-	size, err := rw.ResponseWriter.Write(b)
-	rw.size += size
-	return size, err
-}
-
-func Logging(next http.Handler) http.Handler {
+func (l *Logger) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		requestId := uuid.New().String()
@@ -52,4 +42,21 @@ func Logging(next http.Handler) http.Handler {
 			Dur("duration", time.Since(start)).
 			Msg("request finished")
 	})
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	size       int
+}
+
+func (rw *responseWriter) WriteHeader(statusCode int) {
+	rw.statusCode = statusCode
+	rw.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	size, err := rw.ResponseWriter.Write(b)
+	rw.size += size
+	return size, err
 }

@@ -18,23 +18,25 @@ import (
 // @BasePath        /
 func Setup(mux *http.ServeMux) {
 	urlService := simpledi.Get("url_service").(*service.Url)
+	rateLimitMiddleware := simpledi.Get("rate_limiter_middleware").(*middleware.RateLimiter)
+	loggerMiddleware := simpledi.Get("logger_middleware").(*middleware.Logger)
 
-	mux.Handle("/swagger/", middleware.ChainFunc(swagger.WrapHandler, middleware.Logging))
+	mux.Handle("/swagger/", swagger.WrapHandler)
 
 	mux.Handle("POST /urls", middleware.ChainFunc(
 		urlCreate(urlService),
-		middleware.Logging,
-		middleware.RateLimit,
+		loggerMiddleware.Handle,
+		rateLimitMiddleware.Handle,
 	))
 	mux.Handle("GET /urls/{short_code}", middleware.ChainFunc(
 		urlShow(urlService),
-		middleware.Logging,
-		middleware.RateLimit,
+		loggerMiddleware.Handle,
+		rateLimitMiddleware.Handle,
 	))
 	mux.Handle("GET /{short_code}", middleware.ChainFunc(
 		urlRedirect(urlService),
-		middleware.Logging,
-		middleware.RateLimit,
+		loggerMiddleware.Handle,
+		rateLimitMiddleware.Handle,
 	))
 }
 

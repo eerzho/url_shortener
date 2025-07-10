@@ -2,6 +2,7 @@ package app
 
 import (
 	"url_shortener/internal/config"
+	"url_shortener/internal/handler/middleware"
 	"url_shortener/internal/repository/postgres"
 	"url_shortener/internal/service"
 	"url_shortener/internal/utils"
@@ -31,16 +32,16 @@ func Setup() {
 			simpledi.Get("postgres").(*sqlx.DB),
 		)
 	})
-	// simpledi.Register("url_valkey_repository", []string{"valkey", "url_postgres_repository"}, func() any {
-	// 	return valkey.NewUrl(
-	// 		simpledi.Get("valkey").(valkeygo.Client),
-	// 		simpledi.Get("url_postgres_repository").(*postgres.Url),
-	// 	)
-	// })
 	simpledi.Register("url_service", []string{"url_postgres_repository"}, func() any {
 		return service.NewUrl(
 			simpledi.Get("url_postgres_repository").(*postgres.Url),
 		)
+	})
+	simpledi.Register("rate_limiter_middleware", nil, func() any {
+		return middleware.NewRateLimiter(1_000, 10, 20)
+	})
+	simpledi.Register("logger_middleware", nil, func() any {
+		return middleware.NewLogger()
 	})
 
 	err := simpledi.Resolve()
