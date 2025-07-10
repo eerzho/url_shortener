@@ -17,7 +17,7 @@ type LruCache[V any] struct {
 	tail     *node[V]
 }
 
-func New[V any](capacity int) *LruCache[V] {
+func NewLruCache[V any](capacity int) *LruCache[V] {
 	if capacity <= 0 {
 		panic("capacity must be positive")
 	}
