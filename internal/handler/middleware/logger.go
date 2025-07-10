@@ -9,22 +9,21 @@ import (
 )
 
 type Logger struct {
+	ipService IpService
 }
 
-func NewLogger() *Logger {
-	return &Logger{}
+func NewLogger(ipService IpService) *Logger {
+	return &Logger{ipService: ipService}
 }
 
 func (l *Logger) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		requestId := uuid.New().String()
-
 		w.Header().Set("X-Request-ID", requestId)
 		rw := &responseWriter{ResponseWriter: w}
-
 		logger := log.With().
-			Str("ip", getIp(r)).
+			Str("ip", l.ipService.GetIp(r.Context(), r)).
 			Str("path", r.URL.Path).
 			Str("method", r.Method).
 			Str("query", r.URL.RawQuery).
@@ -33,9 +32,7 @@ func (l *Logger) Handle(next http.Handler) http.Handler {
 			Int("request_size", int(r.ContentLength)).
 			Logger()
 		logger.Info().Msg("request started")
-
 		next.ServeHTTP(rw, r)
-
 		logger.Info().
 			Int("response_size", rw.size).
 			Int("status_code", rw.statusCode).
