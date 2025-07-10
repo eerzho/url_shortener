@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"url_shortener/internal/handler/middleware"
 	"url_shortener/internal/handler/response"
-	"url_shortener/internal/service"
 
 	"github.com/eerzho/simpledi"
 	"github.com/go-playground/validator/v10"
@@ -17,24 +16,24 @@ import (
 // @version         1.0
 // @BasePath        /
 func Setup(mux *http.ServeMux) {
-	urlService := simpledi.Get("url_service").(*service.Url)
 	rateLimitMiddleware := simpledi.Get("rate_limiter_middleware").(*middleware.RateLimiter)
 	loggerMiddleware := simpledi.Get("logger_middleware").(*middleware.Logger)
+	urlHandler := simpledi.Get("url_handler").(*Url)
 
 	mux.Handle("/swagger/", swagger.WrapHandler)
 
 	mux.Handle("POST /urls", middleware.ChainFunc(
-		urlCreate(urlService),
+		urlHandler.Create,
 		loggerMiddleware.Handle,
 		rateLimitMiddleware.Handle,
 	))
 	mux.Handle("GET /urls/{short_code}", middleware.ChainFunc(
-		urlShow(urlService),
+		urlHandler.Stats,
 		loggerMiddleware.Handle,
 		rateLimitMiddleware.Handle,
 	))
 	mux.Handle("GET /{short_code}", middleware.ChainFunc(
-		urlRedirect(urlService),
+		urlHandler.Click,
 		loggerMiddleware.Handle,
 		rateLimitMiddleware.Handle,
 	))
