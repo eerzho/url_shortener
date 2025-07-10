@@ -21,9 +21,21 @@ func Setup(mux *http.ServeMux) {
 
 	mux.Handle("/swagger/", middleware.ChainFunc(swagger.WrapHandler, middleware.Logging))
 
-	mux.Handle("POST /urls", middleware.ChainFunc(urlCreate(urlService), middleware.Logging, middleware.RateLimit))
-	mux.Handle("GET /urls/{short_code}", middleware.ChainFunc(urlShow(urlService), middleware.Logging, middleware.RateLimit))
-	mux.Handle("GET /{short_code}", middleware.ChainFunc(urlRedirect(urlService), middleware.Logging, middleware.RateLimit))
+	mux.Handle("POST /urls", middleware.ChainFunc(
+		urlCreate(urlService),
+		middleware.Logging,
+		middleware.RateLimit,
+	))
+	mux.Handle("GET /urls/{short_code}", middleware.ChainFunc(
+		urlShow(urlService),
+		middleware.Logging,
+		middleware.RateLimit,
+	))
+	mux.Handle("GET /{short_code}", middleware.ChainFunc(
+		urlRedirect(urlService),
+		middleware.Logging,
+		middleware.RateLimit,
+	))
 }
 
 var validate *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
