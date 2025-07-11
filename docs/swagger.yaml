@@ -2,6 +2,7 @@ definitions:
   request.CreateUrl:
     properties:
       long_url:
+        maxLength: 2048
         type: string
     required:
     - long_url
@@ -17,7 +18,14 @@ definitions:
     type: object
   response.Url:
     properties:
-      clicks:
+      long_url:
+        type: string
+      short_code:
+        type: string
+    type: object
+  response.UrlStats:
+    properties:
+      clicks_count:
         type: integer
       created_at:
         type: integer
@@ -48,7 +56,11 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.Error'
-      summary: redirect to long url
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      summary: click short code
       tags:
       - url
   /urls:
@@ -56,7 +68,7 @@ paths:
       consumes:
       - application/json
       parameters:
-      - description: create short code
+      - description: create url
         in: body
         name: input
         required: true
@@ -73,7 +85,11 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/response.Error'
-      summary: create short code
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      summary: create url
       tags:
       - url
   /urls/{short_code}:
@@ -90,12 +106,16 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/response.Url'
+            $ref: '#/definitions/response.UrlStats'
         "400":
           description: Bad Request
           schema:
             $ref: '#/definitions/response.Error'
-      summary: get url info
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Error'
+      summary: url stats
       tags:
       - url
 swagger: "2.0"

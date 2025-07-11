@@ -26,10 +26,10 @@ const docTemplate = `{
                 "tags": [
                     "url"
                 ],
-                "summary": "create short code",
+                "summary": "create url",
                 "parameters": [
                     {
-                        "description": "create short code",
+                        "description": "create url",
                         "name": "input",
                         "in": "body",
                         "required": true,
@@ -50,6 +50,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.Error"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
                     }
                 }
             }
@@ -62,7 +68,7 @@ const docTemplate = `{
                 "tags": [
                     "url"
                 ],
-                "summary": "get url info",
+                "summary": "url stats",
                 "parameters": [
                     {
                         "type": "string",
@@ -76,11 +82,17 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/response.Url"
+                            "$ref": "#/definitions/response.UrlStats"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/response.Error"
                         }
@@ -93,7 +105,7 @@ const docTemplate = `{
                 "tags": [
                     "url"
                 ],
-                "summary": "redirect to long url",
+                "summary": "click short code",
                 "parameters": [
                     {
                         "type": "string",
@@ -112,6 +124,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/response.Error"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.Error"
+                        }
                     }
                 }
             }
@@ -125,7 +143,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "long_url": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 2048
                 }
             }
         },
@@ -146,7 +165,18 @@ const docTemplate = `{
         "response.Url": {
             "type": "object",
             "properties": {
-                "clicks": {
+                "long_url": {
+                    "type": "string"
+                },
+                "short_code": {
+                    "type": "string"
+                }
+            }
+        },
+        "response.UrlStats": {
+            "type": "object",
+            "properties": {
+                "clicks_count": {
                     "type": "integer"
                 },
                 "created_at": {
