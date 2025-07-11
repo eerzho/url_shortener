@@ -20,7 +20,7 @@ func Setup() {
 		return config.NewConfig()
 	})
 	simpledi.Register("postgres", []string{"config"}, func() any {
-		return utils.NewPostgresCLient(
+		return utils.NewPostgresDb(
 			simpledi.Get("config").(*config.Config).Postgres.Url,
 		)
 	})

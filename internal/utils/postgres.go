@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func NewPostgresCLient(url string) *sqlx.DB {
+func NewPostgresDb(url string) *sqlx.DB {
 	client, err := sqlx.Connect("postgres", url)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to postgres")
