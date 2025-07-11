@@ -89,5 +89,5 @@ func Setup() {
 func Close() {
 	simpledi.Get("postgres").(*sqlx.DB).Close()
 	simpledi.Get("valkey").(valkeygo.Client).Close()
-	// simpledi.Get("url_valkey_repository").(*valkey.Url).Close()
+	simpledi.Get("url_service").(*service.Url).Close()
 }

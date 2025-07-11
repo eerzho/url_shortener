@@ -6,18 +6,30 @@ import (
 	"errors"
 	"fmt"
 	"url_shortener/internal/model"
+	"url_shortener/pkg/async"
+
+	"github.com/rs/zerolog/log"
 )
 
 type Url struct {
+	pool            *async.WorkerPool
 	urlRepository   UrlRepository
 	clickRepository ClickRepository
 }
 
 func NewUrl(urlRepository UrlRepository, clickRepository ClickRepository) *Url {
+	pool := async.NewWorkerPool(10, 1_000)
+	pool.Start()
+
 	return &Url{
+		pool:            pool,
 		urlRepository:   urlRepository,
 		clickRepository: clickRepository,
 	}
+}
+
+func (u *Url) Close() {
+	u.pool.Shutdown()
 }
 
 func (u *Url) Create(ctx context.Context, longUrl, ip, userAgent string) (*model.Url, error) {
@@ -41,7 +53,23 @@ func (u *Url) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 	if err != nil {
 		return nil, err
 	}
-	_, err = u.clickRepository.Create(ctx, url.Id, ip, userAgent) // TODO: run in worker pool
+	clickJob := func(jobCtx context.Context, workerId int) {
+		logger := log.With().
+			Str("ip", ip).
+			Int("url_id", url.Id).
+			Int("worker_id", workerId).
+			Str("user_agent", userAgent).
+			Str("url_short_code", shortCode).
+			Logger()
+		logger.Debug().Msg("creating click")
+		click, err := u.clickRepository.Create(jobCtx, url.Id, ip, userAgent)
+		if err != nil {
+			logger.Error().Err(err).Msg("failed to create click")
+			return
+		}
+		logger.Debug().Int("click_id", click.Id).Msg("created click")
+	}
+	err = u.pool.Submit(clickJob)
 	if err != nil {
 		return nil, err
 	}
