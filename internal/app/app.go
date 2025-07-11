@@ -69,8 +69,12 @@ func Setup() {
 	})
 
 	// handler
-	simpledi.Register("url_handler", []string{"url_service", "ip_service"}, func() any {
+	simpledi.Register("handler", nil, func() any {
+		return handler.New()
+	})
+	simpledi.Register("url_handler", []string{"handler", "url_service", "ip_service"}, func() any {
 		return handler.NewUrl(
+			simpledi.Get("handler").(*handler.Handler),
 			simpledi.Get("url_service").(*service.Url),
 			simpledi.Get("ip_service").(*service.Ip),
 		)

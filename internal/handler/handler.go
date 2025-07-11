@@ -12,6 +12,41 @@ import (
 	swagger "github.com/swaggo/http-swagger"
 )
 
+type Handler struct {
+	v *validator.Validate
+}
+
+func New() *Handler {
+	return &Handler{
+		v: validator.New(validator.WithRequiredStructEnabled()),
+	}
+}
+
+func (h *Handler) parseBody(request any, body io.Reader) error {
+	err := json.NewDecoder(body).Decode(request)
+	if err != nil {
+		return err
+	}
+	err = h.v.Struct(request)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h *Handler) jsonOk(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("content-type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(data)
+}
+
+func (h *Handler) jsonBad(w http.ResponseWriter, err error) {
+	w.Header().Set("content-type", "application/json")
+	errResponse := response.NewError(err)
+	w.WriteHeader(errResponse.StatusCode)
+	json.NewEncoder(w).Encode(errResponse)
+}
+
 // @title           url shortener api
 // @version         1.0
 // @BasePath        /
@@ -37,31 +72,4 @@ func Setup(mux *http.ServeMux) {
 		loggerMiddleware.Handle,
 		rateLimitMiddleware.Handle,
 	))
-}
-
-var validate *validator.Validate = validator.New(validator.WithRequiredStructEnabled())
-
-func decodeAndValidate(request any, body io.Reader) error {
-	err := json.NewDecoder(body).Decode(request)
-	if err != nil {
-		return err
-	}
-	err = validate.Struct(request)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func successResponse(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("content-type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
-}
-
-func errorResponse(w http.ResponseWriter, err error) {
-	w.Header().Set("content-type", "application/json")
-	errResponse := response.NewError(err)
-	w.WriteHeader(errResponse.StatusCode)
-	json.NewEncoder(w).Encode(errResponse)
 }

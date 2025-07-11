@@ -7,12 +7,18 @@ import (
 )
 
 type Url struct {
+	Handler
 	urlService UrlService
 	ipService  IpService
 }
 
-func NewUrl(urlService UrlService, ipService IpService) *Url {
+func NewUrl(
+	handler *Handler,
+	urlService UrlService,
+	ipService IpService,
+) *Url {
 	return &Url{
+		Handler:    *handler,
 		urlService: urlService,
 		ipService:  ipService,
 	}
@@ -30,9 +36,9 @@ func NewUrl(urlService UrlService, ipService IpService) *Url {
 // @Router       /urls [post]
 func (u *Url) Create(w http.ResponseWriter, r *http.Request) {
 	var request request.CreateUrl
-	err := decodeAndValidate(&request, r.Body)
+	err := u.parseBody(&request, r.Body)
 	if err != nil {
-		errorResponse(w, err)
+		u.jsonBad(w, err)
 		return
 	}
 	url, err := u.urlService.Create(
@@ -42,10 +48,10 @@ func (u *Url) Create(w http.ResponseWriter, r *http.Request) {
 		r.UserAgent(),
 	)
 	if err != nil {
-		errorResponse(w, err)
+		u.jsonBad(w, err)
 		return
 	}
-	successResponse(w, http.StatusCreated, response.NewUrl(url))
+	u.jsonOk(w, http.StatusCreated, response.NewUrl(url))
 }
 
 // Stats godoc
@@ -63,10 +69,10 @@ func (u *Url) Stats(w http.ResponseWriter, r *http.Request) {
 		r.PathValue("short_code"),
 	)
 	if err != nil {
-		errorResponse(w, err)
+		u.jsonBad(w, err)
 		return
 	}
-	successResponse(w, http.StatusOK, response.NewUrlStats(url))
+	u.jsonOk(w, http.StatusOK, response.NewUrlStats(url))
 }
 
 // Click godoc
@@ -85,7 +91,7 @@ func (u *Url) Click(w http.ResponseWriter, r *http.Request) {
 		r.UserAgent(),
 	)
 	if err != nil {
-		errorResponse(w, err)
+		u.jsonBad(w, err)
 		return
 	}
 	http.Redirect(w, r, url.LongUrl, http.StatusFound)
