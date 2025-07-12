@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"crypto/sha256"
-	"errors"
 	"fmt"
+	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 	"url_shortener/pkg/async"
 
@@ -39,7 +39,7 @@ func (u *Url) Create(ctx context.Context, longUrl, ip, userAgent string) (*model
 		return nil, err
 	}
 	if exists {
-		return nil, errors.New("short code already exists")
+		return nil, constant.ErrAlreadyExists
 	}
 	url, err := u.urlRepository.Create(ctx, longUrl, shortCode)
 	if err != nil {

@@ -2,6 +2,9 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 
 	"github.com/jmoiron/sqlx"
@@ -50,6 +53,9 @@ func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 		shortCode,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constant.ErrNotFound
+		}
 		return nil, err
 	}
 	return &url, nil
@@ -67,6 +73,9 @@ func (u *Url) GetWithClicksCountByShortCode(ctx context.Context, shortCode strin
 		shortCode,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constant.ErrNotFound
+		}
 		return nil, err
 	}
 	return &url, nil
