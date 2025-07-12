@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"url_shortener/internal/constant"
@@ -29,11 +30,11 @@ func New() *Handler {
 func (h *Handler) parseJson(request any, body io.Reader) error {
 	err := json.NewDecoder(body).Decode(request)
 	if err != nil {
-		return err
+		return fmt.Errorf("decode: %w", err)
 	}
 	err = h.v.Struct(request)
 	if err != nil {
-		return err
+		return fmt.Errorf("validate: %w", err)
 	}
 	return nil
 }
@@ -60,24 +61,49 @@ func (h *Handler) list(w http.ResponseWriter, list any, pagination *dto.Paginati
 }
 
 func (h *Handler) fail(w http.ResponseWriter, err error) {
-	status := h.mapErrorToStatus(err)
-	response := response.Fail{}
+	status := h.mapErrToStatus(err)
 
+	logger := log.Debug()
+	if status >= 500 {
+		logger = log.Error()
+	}
+	logger.Err(err).
+		Int("status", status).
+		Msg("error occurred")
+
+	h.writeJson(w, status, h.createFailResponse(err, status))
+}
+
+func (h *Handler) unwrapErr(err error) error {
+	for errors.Unwrap(err) != nil {
+		err = errors.Unwrap(err)
+	}
+	return err
+}
+
+func (h *Handler) createFailResponse(err error, status int) *response.Fail {
+	response := response.Fail{}
 	var validateErrs validator.ValidationErrors
 	if errors.As(err, &validateErrs) {
-		status = http.StatusBadRequest
 		response.Errors = make([]string, len(validateErrs))
 		for i, e := range validateErrs {
 			response.Errors[i] = e.Error()
 		}
-	} else {
-		response.Error = err.Error()
+		return &response
 	}
-
-	h.writeJson(w, status, response)
+	response.Error = http.StatusText(status)
+	if status < 500 {
+		response.Error = h.unwrapErr(err).Error()
+	}
+	return &response
 }
 
-func (h *Handler) mapErrorToStatus(err error) int {
+func (h *Handler) mapErrToStatus(err error) int {
+	var validateErrs validator.ValidationErrors
+	if errors.As(err, &validateErrs) {
+		return http.StatusBadRequest
+	}
+
 	switch {
 	case errors.Is(err, constant.ErrAlreadyExists):
 		return http.StatusConflict
