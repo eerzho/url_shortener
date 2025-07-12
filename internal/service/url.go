@@ -33,25 +33,27 @@ func (u *Url) Close() {
 }
 
 func (u *Url) Create(ctx context.Context, longUrl, ip, userAgent string) (*model.Url, error) {
+	const op = "service.Url.Create"
 	shortCode := u.generateShortCode(longUrl, ip, userAgent)
 	exists, err := u.urlRepository.ExistsByShortCode(ctx, shortCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if exists {
-		return nil, constant.ErrAlreadyExists
+		return nil, fmt.Errorf("%s: %w", op, constant.ErrAlreadyExists)
 	}
 	url, err := u.urlRepository.Create(ctx, longUrl, shortCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return url, nil
 }
 
 func (u *Url) Click(ctx context.Context, shortCode, ip, userAgent string) (*model.Url, error) {
+	const op = "service.Url.Click"
 	url, err := u.urlRepository.GetByShortCode(ctx, shortCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	clickJob := func(jobCtx context.Context, workerId int) {
 		logger := log.With().
@@ -71,15 +73,16 @@ func (u *Url) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 	}
 	err = u.pool.Submit(clickJob)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return url, nil
 }
 
 func (u *Url) GetStats(ctx context.Context, shortCode string) (*model.UrlWithClicksCount, error) {
+	const op = "service.Url.GetStats"
 	url, err := u.urlRepository.GetWithClicksCountByShortCode(ctx, shortCode)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return url, nil
 }
