@@ -33,7 +33,7 @@ func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) (
 	}
 
 	offset := (page - 1) * size
-	var clicks []model.Click
+	clicks := []model.Click{}
 	err = c.db.SelectContext(ctx, &clicks,
 		`
 			select c.id, c.url_id, c.ip, c.user_agent, c.created_at
