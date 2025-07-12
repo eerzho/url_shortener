@@ -52,8 +52,10 @@ func Setup() {
 	simpledi.Register("ip_service", nil, func() any {
 		return service.NewIp()
 	})
-	simpledi.Register("click_service", nil, func() any {
-		return service.NewClick()
+	simpledi.Register("click_service", []string{"click_postgres_repository"}, func() any {
+		return service.NewClick(
+			simpledi.Get("click_postgres_repository").(*postgres.Click),
+		)
 	})
 
 	// middleware
@@ -82,7 +84,7 @@ func Setup() {
 			simpledi.Get("ip_service").(*service.Ip),
 		)
 	})
-	simpledi.Register("click_handler", []string{"handler"}, func() any {
+	simpledi.Register("click_handler", []string{"handler", "click_service"}, func() any {
 		return handler.NewClick(
 			simpledi.Get("handler").(*handler.Handler),
 			simpledi.Get("click_service").(*service.Click),
