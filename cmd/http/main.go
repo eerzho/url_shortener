@@ -15,6 +15,7 @@ import (
 	"github.com/eerzho/simpledi"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	swagger "github.com/swaggo/http-swagger"
 )
 
 func init() {
@@ -45,11 +46,16 @@ func init() {
 	}
 }
 
+// @title    url shortener api
+// @version  1.0
+// @BasePath /
 func main() {
 	app.Setup()
 	defer app.Close()
 
 	mux := http.NewServeMux()
+	mux.Handle("/swagger/", swagger.WrapHandler)
+
 	handler.Setup(mux)
 
 	server := &http.Server{
