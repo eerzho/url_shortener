@@ -5,6 +5,7 @@ import (
 	"url_shortener/internal/handler"
 	"url_shortener/internal/handler/middleware"
 	"url_shortener/internal/repository/postgres"
+	"url_shortener/internal/repository/valkey"
 	"url_shortener/internal/service"
 	"url_shortener/internal/utils"
 
@@ -41,11 +42,17 @@ func Setup() {
 			simpledi.Get("postgres").(*sqlx.DB),
 		)
 	})
+	simpledi.Register("url_valkey_repository", []string{"valkey", "url_postgres_repository"}, func() any {
+		return valkey.New(
+			simpledi.Get("valkey").(valkeygo.Client),
+			simpledi.Get("url_postgres_repository").(*postgres.Url),
+		)
+	})
 
 	// service
-	simpledi.Register("url_service", []string{"url_postgres_repository", "click_postgres_repository"}, func() any {
+	simpledi.Register("url_service", []string{"url_valkey_repository", "click_postgres_repository"}, func() any {
 		return service.NewUrl(
-			simpledi.Get("url_postgres_repository").(*postgres.Url),
+			simpledi.Get("url_valkey_repository").(*valkey.Url),
 			simpledi.Get("click_postgres_repository").(*postgres.Click),
 		)
 	})
