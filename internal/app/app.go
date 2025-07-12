@@ -52,6 +52,9 @@ func Setup() {
 	simpledi.Register("ip_service", nil, func() any {
 		return service.NewIp()
 	})
+	simpledi.Register("click_service", nil, func() any {
+		return service.NewClick()
+	})
 
 	// middleware
 	simpledi.Register("rate_limiter_middleware", []string{"ip_service"}, func() any {
@@ -77,6 +80,12 @@ func Setup() {
 			simpledi.Get("handler").(*handler.Handler),
 			simpledi.Get("url_service").(*service.Url),
 			simpledi.Get("ip_service").(*service.Ip),
+		)
+	})
+	simpledi.Register("click_handler", []string{"handler"}, func() any {
+		return handler.NewClick(
+			simpledi.Get("handler").(*handler.Handler),
+			simpledi.Get("click_service").(*service.Click),
 		)
 	})
 
