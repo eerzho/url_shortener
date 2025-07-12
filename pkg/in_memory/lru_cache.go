@@ -39,17 +39,21 @@ func NewLruCache[V any](capacity int) *LruCache[V] {
 func (l *LruCache[V]) Put(key string, value V) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
 	item, ok := l.data[key]
 	if ok {
 		item.value = value
+
 		l.remove(item)
 		l.addToHead(item)
 		return
 	}
+
 	if len(l.data) >= l.capacity {
 		delete(l.data, l.tail.prev.key)
 		l.remove(l.tail.prev)
 	}
+
 	item = &node[V]{key: key, value: value}
 	l.addToHead(item)
 	l.data[key] = item
@@ -58,20 +62,25 @@ func (l *LruCache[V]) Put(key string, value V) {
 func (l *LruCache[V]) Get(key string) (V, bool) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
+
 	item, ok := l.data[key]
 	if !ok {
 		var zero V
 		return zero, false
 	}
+
 	l.remove(item)
 	l.addToHead(item)
+
 	return item.value, true
 }
 
 func (l *LruCache[V]) addToHead(item *node[V]) {
 	tmp := l.head.next
+
 	tmp.prev = item
 	item.next = tmp
+
 	l.head.next = item
 	item.prev = l.head
 }
@@ -79,6 +88,7 @@ func (l *LruCache[V]) addToHead(item *node[V]) {
 func (l *LruCache[V]) remove(item *node[V]) {
 	prev := item.prev
 	next := item.next
+
 	prev.next = next
 	next.prev = prev
 }

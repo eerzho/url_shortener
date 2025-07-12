@@ -6,6 +6,12 @@ import (
 	"sync"
 )
 
+var (
+	ErrJobNil      = errors.New("job cannot be nil")
+	ErrPoolStopped = errors.New("worker pool not started")
+	ErrQueueFull   = errors.New("job queue is full")
+)
+
 type Job func(ctx context.Context, workerId int)
 
 type WorkerPool struct {
@@ -53,7 +59,7 @@ func (w *WorkerPool) Start() {
 
 func (w *WorkerPool) Submit(job Job) error {
 	if job == nil {
-		return errors.New("job cannot be nil")
+		return ErrJobNil
 	}
 
 	w.mu.Lock()
@@ -61,7 +67,7 @@ func (w *WorkerPool) Submit(job Job) error {
 	w.mu.Unlock()
 
 	if !started {
-		return errors.New("worker pool not started")
+		return ErrPoolStopped
 	}
 
 	select {
@@ -70,7 +76,7 @@ func (w *WorkerPool) Submit(job Job) error {
 	case <-w.ctx.Done():
 		return w.ctx.Err()
 	default:
-		return errors.New("job queue is full")
+		return ErrQueueFull
 	}
 }
 
