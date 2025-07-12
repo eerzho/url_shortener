@@ -13,5 +13,6 @@ type UrlRepository interface {
 }
 
 type ClickRepository interface {
+	GetList(ctx context.Context, shortCode string, page, size int) ([]model.Click, int, error)
 	Create(ctx context.Context, urlId int, ip string, userAgent string) (*model.Click, error)
 }

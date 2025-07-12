@@ -15,6 +15,42 @@ func NewClick(db *sqlx.DB) *Click {
 	return &Click{db: db}
 }
 
+func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) ([]model.Click, int, error) {
+	var total int
+	err := c.db.GetContext(ctx, &total,
+		`
+			select count(*) from clicks c
+			join urls u on c.url_id = u.id
+			where u.short_code = $1
+		`,
+		shortCode,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	if total == 0 {
+		return []model.Click{}, 0, nil
+	}
+
+	offset := (page - 1) * size
+	var clicks []model.Click
+	err = c.db.SelectContext(ctx, &clicks,
+		`
+			select c.id, c.url_id, c.ip, c.user_agent, c.created_at
+			from clicks c
+			join urls u on c.url_id = u.id
+			where u.short_code = $1
+			order by c.created_at desc
+			limit $2 offset $3
+		`,
+		shortCode, size, offset,
+	)
+	if err != nil {
+		return nil, 0, err
+	}
+	return clicks, total, nil
+}
+
 func (c *Click) Create(ctx context.Context, urlId int, ip string, userAgent string) (*model.Click, error) {
 	var click model.Click
 	err := c.db.GetContext(ctx, &click,
