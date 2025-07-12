@@ -1,15 +1,19 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
+	"url_shortener/internal/constant"
+	"url_shortener/internal/dto"
 	"url_shortener/internal/handler/middleware"
 	"url_shortener/internal/handler/response"
 
 	"github.com/eerzho/simpledi"
 	"github.com/go-playground/validator/v10"
-	swagger "github.com/swaggo/http-swagger"
+	"github.com/rs/zerolog/log"
 )
 
 type Handler struct {
@@ -22,7 +26,7 @@ func New() *Handler {
 	}
 }
 
-func (h *Handler) parseBody(request any, body io.Reader) error {
+func (h *Handler) parseJson(request any, body io.Reader) error {
 	err := json.NewDecoder(body).Decode(request)
 	if err != nil {
 		return err
@@ -34,42 +38,84 @@ func (h *Handler) parseBody(request any, body io.Reader) error {
 	return nil
 }
 
-func (h *Handler) jsonOk(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("content-type", "application/json")
+func (h *Handler) writeJson(w http.ResponseWriter, status int, response any) {
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(data)
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Error().
+			Err(err).
+			Int("status", status).
+			Any("response", response).
+			Msg("failed to encode response")
+	}
 }
 
-func (h *Handler) jsonBad(w http.ResponseWriter, err error) {
-	w.Header().Set("content-type", "application/json")
-	errResponse := response.NewError(err)
-	w.WriteHeader(errResponse.StatusCode)
-	json.NewEncoder(w).Encode(errResponse)
+func (h *Handler) ok(w http.ResponseWriter, status int, data any) {
+	h.writeJson(w, status, response.Ok{Data: data})
 }
 
-// @title           url shortener api
-// @version         1.0
-// @BasePath        /
+func (h *Handler) list(w http.ResponseWriter, list any, pagination *dto.Pagination) {
+	h.writeJson(w, http.StatusOK, response.List{Data: list, Pagination: pagination})
+}
+
+func (h *Handler) fail(w http.ResponseWriter, err error) {
+	status := h.mapErrorToStatus(err)
+	response := response.Fail{}
+
+	var validateErrs validator.ValidationErrors
+	if errors.As(err, &validateErrs) {
+		status = http.StatusBadRequest
+		response.Errors = make([]string, len(validateErrs))
+		for i, e := range validateErrs {
+			response.Errors[i] = e.Error()
+		}
+	} else {
+		response.Error = err.Error()
+	}
+
+	h.writeJson(w, status, response)
+}
+
+func (h *Handler) mapErrorToStatus(err error) int {
+	switch {
+	case errors.Is(err, constant.ErrAlreadyExists):
+		return http.StatusConflict
+	case errors.Is(err, constant.ErrNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, context.DeadlineExceeded):
+		return http.StatusRequestTimeout
+	case errors.Is(err, context.Canceled):
+		return http.StatusRequestTimeout
+	default:
+		return http.StatusInternalServerError
+	}
+}
+
 func Setup(mux *http.ServeMux) {
-	rateLimitMiddleware := simpledi.Get("rate_limiter_middleware").(*middleware.RateLimiter)
+	rateLimiterMiddleware := simpledi.Get("rate_limiter_middleware").(*middleware.RateLimiter)
 	loggerMiddleware := simpledi.Get("logger_middleware").(*middleware.Logger)
 	urlHandler := simpledi.Get("url_handler").(*Url)
-
-	mux.Handle("/swagger/", swagger.WrapHandler)
+	clickHandler := simpledi.Get("click_handler").(*Click)
 
 	mux.Handle("POST /urls", middleware.ChainFunc(
 		urlHandler.Create,
 		loggerMiddleware.Handle,
-		rateLimitMiddleware.Handle,
+		rateLimiterMiddleware.Handle,
 	))
 	mux.Handle("GET /urls/{short_code}", middleware.ChainFunc(
 		urlHandler.Stats,
 		loggerMiddleware.Handle,
-		rateLimitMiddleware.Handle,
+		rateLimiterMiddleware.Handle,
+	))
+	mux.Handle("GET /urls/{short_code}/clicks", middleware.ChainFunc(
+		clickHandler.List,
+		loggerMiddleware.Handle,
+		rateLimiterMiddleware.Handle,
 	))
 	mux.Handle("GET /{short_code}", middleware.ChainFunc(
 		urlHandler.Click,
 		loggerMiddleware.Handle,
-		rateLimitMiddleware.Handle,
+		rateLimiterMiddleware.Handle,
 	))
 }

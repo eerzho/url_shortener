@@ -3,11 +3,10 @@ package handler
 import (
 	"net/http"
 	"url_shortener/internal/handler/request"
-	"url_shortener/internal/handler/response"
 )
 
 type Url struct {
-	Handler
+	*Handler
 	urlService UrlService
 	ipService  IpService
 }
@@ -18,27 +17,27 @@ func NewUrl(
 	ipService IpService,
 ) *Url {
 	return &Url{
-		Handler:    *handler,
+		Handler:    handler,
 		urlService: urlService,
 		ipService:  ipService,
 	}
 }
 
 // Create godoc
-// @Summary      create url
-// @Tags         url
-// @Accept       json
-// @Produce      json
-// @Param        input  body  request.CreateUrl  true "create url"
-// @Success      201    {object}  response.Url
-// @Failure      400    {object}  response.Error
-// @Failure      500    {object}  response.Error
-// @Router       /urls [post]
+// @Summary    create url
+// @Tags       url
+// @Accept     json
+// @Produce    json
+// @Param      input body request.CreateUrl true "create url"
+// @Success    201 {object} response.Ok{data=model.Url}
+// @Failure    400 {object} response.Fail
+// @Failure    500 {object} response.Fail
+// @Router     /urls [post]
 func (u *Url) Create(w http.ResponseWriter, r *http.Request) {
 	var request request.CreateUrl
-	err := u.parseBody(&request, r.Body)
+	err := u.parseJson(&request, r.Body)
 	if err != nil {
-		u.jsonBad(w, err)
+		u.fail(w, err)
 		return
 	}
 	url, err := u.urlService.Create(
@@ -48,41 +47,41 @@ func (u *Url) Create(w http.ResponseWriter, r *http.Request) {
 		r.UserAgent(),
 	)
 	if err != nil {
-		u.jsonBad(w, err)
+		u.fail(w, err)
 		return
 	}
-	u.jsonOk(w, http.StatusCreated, response.NewUrl(url))
+	u.ok(w, http.StatusCreated, url)
 }
 
 // Stats godoc
-// @Summary      url stats
-// @Tags         url
-// @Produce      json
-// @Param        short_code  path  string  true "short code"
-// @Success      200    {object}  response.UrlStats
-// @Failure      400    {object}  response.Error
-// @Failure      500    {object}  response.Error
-// @Router       /urls/{short_code} [get]
+// @Summary   url stats
+// @Tags      url
+// @Produce   json
+// @Param     short_code path string true "short code"
+// @Success   200 {object} response.Ok{data=model.UrlWithClicksCount}
+// @Failure   400 {object} response.Fail
+// @Failure   500 {object} response.Fail
+// @Router    /urls/{short_code} [get]
 func (u *Url) Stats(w http.ResponseWriter, r *http.Request) {
 	url, err := u.urlService.GetStats(
 		r.Context(),
 		r.PathValue("short_code"),
 	)
 	if err != nil {
-		u.jsonBad(w, err)
+		u.fail(w, err)
 		return
 	}
-	u.jsonOk(w, http.StatusOK, response.NewUrlStats(url))
+	u.ok(w, http.StatusOK, url)
 }
 
 // Click godoc
-// @Summary      click short code
-// @Tags         url
-// @Param        short_code  path  string  true "short code"
-// @Success      302
-// @Failure      400    {object}  response.Error
-// @Failure      500    {object}  response.Error
-// @Router       /{short_code} [get]
+// @Summary   click short code
+// @Tags      url
+// @Param     short_code path string true "short code"
+// @Success   302
+// @Failure   400 {object} response.Fail
+// @Failure   500 {object} response.Fail
+// @Router    /{short_code} [get]
 func (u *Url) Click(w http.ResponseWriter, r *http.Request) {
 	url, err := u.urlService.Click(
 		r.Context(),
@@ -91,7 +90,7 @@ func (u *Url) Click(w http.ResponseWriter, r *http.Request) {
 		r.UserAgent(),
 	)
 	if err != nil {
-		u.jsonBad(w, err)
+		u.fail(w, err)
 		return
 	}
 	http.Redirect(w, r, url.LongUrl, http.StatusFound)
