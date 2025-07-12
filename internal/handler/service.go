@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"net/http"
+	"url_shortener/internal/dto"
 	"url_shortener/internal/model"
 )
 
@@ -14,4 +15,8 @@ type UrlService interface {
 
 type IpService interface {
 	GetIp(ctx context.Context, r *http.Request) string
+}
+
+type ClickService interface {
+	GetList(ctx context.Context, shortCode string, page, size int) ([]model.Click, *dto.Pagination, error)
 }
