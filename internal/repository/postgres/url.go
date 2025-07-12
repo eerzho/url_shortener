@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 
@@ -19,6 +20,7 @@ func NewUrl(db *sqlx.DB) *Url {
 }
 
 func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
+	const op = "repository.postgres.Url.Create"
 	var url model.Url
 	err := u.db.GetContext(ctx, &url,
 		`
@@ -29,24 +31,26 @@ func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url
 		longUrl, shortCode,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &url, nil
 }
 
 func (u *Url) ExistsByShortCode(ctx context.Context, shortCode string) (bool, error) {
+	const op = "repository.postgres.Url.ExistsByShortCode"
 	var count int
 	err := u.db.GetContext(ctx, &count,
 		`select count(*) from urls where short_code = $1`,
 		shortCode,
 	)
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("%s: %w", op, err)
 	}
 	return count > 0, nil
 }
 
 func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+	const op = "repository.postgres.Url.GetByShortCode"
 	var url model.Url
 	err := u.db.GetContext(ctx, &url,
 		`select * from urls where short_code = $1`,
@@ -54,14 +58,15 @@ func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, constant.ErrNotFound
+			return nil, fmt.Errorf("%s: %w", op, constant.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &url, nil
 }
 
 func (u *Url) GetWithClicksCountByShortCode(ctx context.Context, shortCode string) (*model.UrlWithClicksCount, error) {
+	const op = "repository.postgres.Url.GetWithClicksCountByShortCode"
 	var url model.UrlWithClicksCount
 	err := u.db.GetContext(ctx, &url,
 		`
@@ -74,9 +79,9 @@ func (u *Url) GetWithClicksCountByShortCode(ctx context.Context, shortCode strin
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, constant.ErrNotFound
+			return nil, fmt.Errorf("%s: %w", op, constant.ErrNotFound)
 		}
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &url, nil
 }

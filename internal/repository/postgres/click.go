@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"fmt"
 	"url_shortener/internal/model"
 
 	"github.com/jmoiron/sqlx"
@@ -16,6 +17,7 @@ func NewClick(db *sqlx.DB) *Click {
 }
 
 func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) ([]model.Click, int, error) {
+	const op = "repository.postgres.Click.GetList"
 	var total int
 	err := c.db.GetContext(ctx, &total,
 		`
@@ -26,7 +28,7 @@ func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) (
 		shortCode,
 	)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
 	}
 	if total == 0 {
 		return []model.Click{}, 0, nil
@@ -46,12 +48,13 @@ func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) (
 		shortCode, size, offset,
 	)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("%s: %w", op, err)
 	}
 	return clicks, total, nil
 }
 
 func (c *Click) Create(ctx context.Context, urlId int, ip string, userAgent string) (*model.Click, error) {
+	const op = "repository.postgres.Click.Create"
 	var click model.Click
 	err := c.db.GetContext(ctx, &click,
 		`
@@ -62,7 +65,7 @@ func (c *Click) Create(ctx context.Context, urlId int, ip string, userAgent stri
 		urlId, ip, userAgent,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	return &click, nil
 }
