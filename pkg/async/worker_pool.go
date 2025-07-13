@@ -63,10 +63,9 @@ func (w *WorkerPool) Submit(job Job) error {
 	}
 
 	w.mu.Lock()
-	started := w.started
-	w.mu.Unlock()
+	defer w.mu.Unlock()
 
-	if !started {
+	if !w.started {
 		return ErrPoolStopped
 	}
 
