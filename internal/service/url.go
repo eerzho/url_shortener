@@ -17,7 +17,10 @@ type Url struct {
 	clickRepository ClickRepository
 }
 
-func NewUrl(urlRepository UrlRepository, clickRepository ClickRepository) *Url {
+func NewUrl(
+	urlRepository UrlRepository,
+	clickRepository ClickRepository,
+) *Url {
 	pool := async.NewWorkerPool(10, 1_000)
 	pool.Start()
 
