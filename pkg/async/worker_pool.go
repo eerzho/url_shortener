@@ -6,6 +6,11 @@ import (
 	"sync"
 )
 
+const (
+	DefaultWorkerCount = 1
+	DefaultBufferSize  = 100
+)
+
 var (
 	ErrJobNil      = errors.New("job cannot be nil")
 	ErrPoolStopped = errors.New("worker pool not started")
@@ -24,18 +29,14 @@ type WorkerPool struct {
 	cancel      context.CancelFunc
 }
 
-func NewWorkerPool(workerCount int, jobQueueSize int) *WorkerPool {
-	if workerCount <= 0 {
-		panic("workerCount must be positive")
-	}
-	if jobQueueSize <= 0 {
-		panic("jobQueueSize must be positive")
-	}
+func NewWorkerPool(workerCount int, bufferSize int) *WorkerPool {
+	workerCount = max(workerCount, DefaultWorkerCount)
+	bufferSize = max(bufferSize, DefaultBufferSize)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &WorkerPool{
 		workerCount: workerCount,
-		jobsChan:    make(chan Job, jobQueueSize),
+		jobsChan:    make(chan Job, bufferSize),
 		ctx:         ctx,
 		cancel:      cancel,
 	}

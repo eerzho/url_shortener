@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	DefaultWorkerCount  = 10
-	DefaultJobQueueSize = 50_000
+	DefaultWorkerCount = 10
+	DefaultBufferSize  = 50_000
 )
 
 type URL struct {
@@ -30,7 +30,7 @@ func NewURL(
 ) *URL {
 	pool := async.NewWorkerPool(
 		DefaultWorkerCount,
-		DefaultJobQueueSize,
+		DefaultBufferSize,
 	)
 	pool.Start()
 

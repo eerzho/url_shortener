@@ -1,6 +1,12 @@
 package inmemory
 
-import "sync"
+import (
+	"sync"
+)
+
+const (
+	DefaultCapacity = 100
+)
 
 type node[V any] struct {
 	key   string
@@ -18,9 +24,7 @@ type LruCache[V any] struct {
 }
 
 func NewLruCache[V any](capacity int) *LruCache[V] {
-	if capacity <= 0 {
-		panic("capacity must be positive")
-	}
+	capacity = max(capacity, DefaultCapacity)
 
 	head := &node[V]{}
 	tail := &node[V]{}
