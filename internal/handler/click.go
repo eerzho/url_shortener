@@ -10,7 +10,10 @@ type Click struct {
 	clickService ClickService
 }
 
-func NewClick(handler *Handler, clickService ClickService) *Click {
+func NewClick(
+	handler *Handler,
+	clickService ClickService,
+) *Click {
 	return &Click{
 		Handler:      handler,
 		clickService: clickService,
