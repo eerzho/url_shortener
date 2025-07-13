@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 	"url_shortener/internal/service"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIp_GetIp(t *testing.T) {
@@ -112,10 +114,8 @@ func TestIp_GetIp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := tt.request()
-			got := ipService.GetIp(ctx, r)
-			if got != tt.want {
-				t.Errorf("got = %v, want = %v", got, tt.want)
-			}
+			ip := ipService.GetIp(ctx, r)
+			assert.Equal(t, tt.want, ip)
 		})
 	}
 }
