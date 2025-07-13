@@ -299,7 +299,6 @@ func BenchmarkUrl_Create(b *testing.B) {
 	ip := "127.0.0.1"
 	userAgent := "Mozilla/5.0"
 
-	// Используем Maybe() для неопределенного количества вызовов в бенчмарке
 	urlRepo.On("ExistsByShortCode", ctx, mock.AnythingOfType("string")).Return(false, nil).Maybe()
 	urlRepo.On("Create", ctx, longUrl, mock.AnythingOfType("string")).Return(&model.Url{
 		Id:        1,
@@ -337,7 +336,6 @@ func BenchmarkUrl_Click(b *testing.B) {
 		UpdatedAt: time.Now(),
 	}
 
-	// Используем Maybe() для неопределенного количества вызовов
 	urlRepo.On("GetByShortCode", ctx, shortCode).Return(url, nil).Maybe()
 	clickRepo.On("Create", mock.AnythingOfType("*context.cancelCtx"), url.Id, ip, userAgent).Return(&model.Click{
 		Id:        1,
@@ -376,7 +374,6 @@ func BenchmarkUrl_GetStats(b *testing.B) {
 		ClicksCount: 42,
 	}
 
-	// Используем Maybe() для неопределенного количества вызовов
 	urlRepo.On("GetWithClicksCountByShortCode", ctx, shortCode).Return(stats, nil).Maybe()
 
 	urlService := service.NewUrl(urlRepo, clickRepo)
