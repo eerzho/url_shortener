@@ -8,8 +8,6 @@ import (
 )
 
 func NewLogger(env string) zerolog.Logger {
-	zerolog.TimeFieldFormat = time.RFC3339
-
 	var level zerolog.Level
 	if env == "prod" {
 		level = zerolog.InfoLevel
@@ -30,6 +28,7 @@ func NewLogger(env string) zerolog.Logger {
 			Out:        os.Stdout,
 			TimeFormat: time.RFC3339,
 		}).
+			Level(level).
 			With().
 			Timestamp().
 			Str("app_env", env).
