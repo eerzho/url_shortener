@@ -12,6 +12,10 @@ import (
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
+const (
+	URLCacheDuration = 24 * time.Hour
+)
+
 type URL struct {
 	logger     zerolog.Logger
 	client     valkeygo.Client
@@ -36,7 +40,7 @@ func (u *URL) Create(ctx context.Context, longURL, shortCode string) (*model.URL
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	if err := u.addToCache(ctx, url); err != nil {
+	if err = u.addToCache(ctx, url); err != nil {
 		u.logger.
 			Error().
 			Err(fmt.Errorf("%s: %w", op, err)).
@@ -63,7 +67,7 @@ func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL,
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	if err := u.addToCache(ctx, url); err != nil {
+	if err = u.addToCache(ctx, url); err != nil {
 		u.logger.
 			Error().
 			Err(fmt.Errorf("%s: %w", op, err)).
@@ -89,7 +93,7 @@ func (u *URL) addToCache(ctx context.Context, url *model.URL) error {
 		Set().
 		Key(key).
 		Value(string(data)).
-		Ex(24 * time.Hour).
+		Ex(URLCacheDuration).
 		Build()
 	return u.client.Do(ctx, cmd).Error()
 }

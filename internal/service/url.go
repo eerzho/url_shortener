@@ -11,6 +11,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
+const (
+	DefaultWorkerCount  = 10
+	DefaultJobQueueSize = 50_000
+)
+
 type URL struct {
 	logger          zerolog.Logger
 	pool            *async.WorkerPool
@@ -23,7 +28,10 @@ func NewURL(
 	urlRepository URLRepository,
 	clickRepository ClickRepository,
 ) *URL {
-	pool := async.NewWorkerPool(10, 50_000)
+	pool := async.NewWorkerPool(
+		DefaultWorkerCount,
+		DefaultJobQueueSize,
+	)
 	pool.Start()
 
 	return &URL{
@@ -71,9 +79,9 @@ func (u *URL) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 			Str("url_short_code", shortCode).
 			Logger()
 		logger.Debug().Msg("creating click")
-		click, err := u.clickRepository.Create(jobCtx, url.ID, ip, userAgent)
-		if err != nil {
-			logger.Error().Err(err).Msg("failed to create click")
+		click, e := u.clickRepository.Create(jobCtx, url.ID, ip, userAgent)
+		if e != nil {
+			logger.Error().Err(e).Msg("failed to create click")
 			return
 		}
 		logger.Debug().Int("click_id", click.ID).Msg("created click")

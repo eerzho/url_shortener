@@ -8,15 +8,21 @@ import (
 	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
+const (
+	DefaultMaxOpenConns    = 25
+	DefaultMaxIdleConns    = 5
+	DefaultConnMaxLifetime = 5 * time.Minute
+)
+
 func NewPostgresDB(url string) (*sqlx.DB, error) {
 	db, err := sqlx.Connect("postgres", url)
 	if err != nil {
 		return nil, err
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(DefaultMaxOpenConns)
+	db.SetMaxIdleConns(DefaultMaxIdleConns)
+	db.SetConnMaxLifetime(DefaultConnMaxLifetime)
 
 	return db, nil
 }

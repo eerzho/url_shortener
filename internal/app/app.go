@@ -145,9 +145,6 @@ func setupMiddleware() {
 		func() any {
 			return middleware.NewRateLimiter(
 				simpledi.Get("ip_service").(*service.IP),
-				10,
-				20,
-				1_000,
 			)
 		},
 	)

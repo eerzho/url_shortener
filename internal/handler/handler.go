@@ -67,7 +67,7 @@ func (h *Handler) fail(w http.ResponseWriter, err error) {
 	status := h.mapErrToStatus(err)
 
 	logger := h.logger.Debug()
-	if status >= 500 {
+	if status >= http.StatusInternalServerError {
 		logger = h.logger.Error()
 	}
 	logger.Err(err).
@@ -95,7 +95,7 @@ func (h *Handler) createFailResponse(err error, status int) *response.Fail {
 		return &response
 	}
 	response.Error = http.StatusText(status)
-	if status < 500 {
+	if status < http.StatusInternalServerError {
 		response.Error = h.unwrapErr(err).Error()
 	}
 	return &response

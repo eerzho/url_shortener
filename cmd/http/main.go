@@ -17,9 +17,18 @@ import (
 	swagger "github.com/swaggo/http-swagger"
 )
 
-// @title    url shortener api
-// @version  1.0
-// @BasePath /
+const (
+	DefaultReadTimeout    = 10 * time.Second
+	DefaultWriteTimeout   = 10 * time.Second
+	DefaultIdleTimeout    = 60 * time.Second
+	DefaultRequestTimeout = 30 * time.Second
+)
+
+// main godoc
+//
+//	@Title		url shortener api
+//	@Version	1.0
+//	@BasePath	/
 func main() {
 	app.MustSetup()
 	defer app.Close()
@@ -32,9 +41,9 @@ func main() {
 	server := &http.Server{
 		Addr:         ":" + simpledi.Get("config").(*config.Config).HTTP.Port,
 		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  DefaultReadTimeout,
+		WriteTimeout: DefaultWriteTimeout,
+		IdleTimeout:  DefaultIdleTimeout,
 	}
 
 	go func() {
@@ -51,7 +60,7 @@ func main() {
 
 	log.Printf("shutting down server...\n")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), DefaultRequestTimeout)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {

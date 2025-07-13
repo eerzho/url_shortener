@@ -22,7 +22,7 @@ definitions:
       user_agent:
         type: string
     type: object
-  model.Url:
+  model.URL:
     properties:
       created_at:
         type: string
@@ -35,7 +35,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  model.UrlWithClicksCount:
+  model.URLWithClicksCount:
     properties:
       clicks_count:
         type: integer
@@ -50,7 +50,7 @@ definitions:
       updated_at:
         type: string
     type: object
-  request.CreateUrl:
+  request.CreateURL:
     properties:
       long_url:
         maxLength: 2048
@@ -114,7 +114,7 @@ paths:
         name: input
         required: true
         schema:
-          $ref: '#/definitions/request.CreateUrl'
+          $ref: '#/definitions/request.CreateURL'
       produces:
       - application/json
       responses:
@@ -125,7 +125,7 @@ paths:
             - $ref: '#/definitions/response.Ok'
             - properties:
                 data:
-                  $ref: '#/definitions/model.Url'
+                  $ref: '#/definitions/model.URL'
               type: object
         "400":
           description: Bad Request
@@ -156,7 +156,7 @@ paths:
             - $ref: '#/definitions/response.Ok'
             - properties:
                 data:
-                  $ref: '#/definitions/model.UrlWithClicksCount'
+                  $ref: '#/definitions/model.URLWithClicksCount'
               type: object
         "400":
           description: Bad Request

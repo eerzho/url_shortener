@@ -34,7 +34,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/request.CreateUrl"
+                            "$ref": "#/definitions/request.CreateURL"
                         }
                     }
                 ],
@@ -50,7 +50,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Url"
+                                            "$ref": "#/definitions/model.URL"
                                         }
                                     }
                                 }
@@ -102,7 +102,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.UrlWithClicksCount"
+                                            "$ref": "#/definitions/model.URLWithClicksCount"
                                         }
                                     }
                                 }
@@ -252,7 +252,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Url": {
+        "model.URL": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -272,7 +272,7 @@ const docTemplate = `{
                 }
             }
         },
-        "model.UrlWithClicksCount": {
+        "model.URLWithClicksCount": {
             "type": "object",
             "properties": {
                 "clicks_count": {
@@ -295,7 +295,7 @@ const docTemplate = `{
                 }
             }
         },
-        "request.CreateUrl": {
+        "request.CreateURL": {
             "type": "object",
             "required": [
                 "long_url"
