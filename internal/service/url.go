@@ -21,7 +21,7 @@ func NewUrl(
 	urlRepository UrlRepository,
 	clickRepository ClickRepository,
 ) *Url {
-	pool := async.NewWorkerPool(10, 1_000)
+	pool := async.NewWorkerPool(10, 50_000)
 	pool.Start()
 
 	return &Url{
