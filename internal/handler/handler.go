@@ -14,16 +14,18 @@ import (
 
 	"github.com/eerzho/simpledi"
 	"github.com/go-playground/validator/v10"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type Handler struct {
-	v *validator.Validate
+	logger   zerolog.Logger
+	validate *validator.Validate
 }
 
-func New() *Handler {
+func New(logger zerolog.Logger) *Handler {
 	return &Handler{
-		v: validator.New(validator.WithRequiredStructEnabled()),
+		logger:   logger,
+		validate: validator.New(validator.WithRequiredStructEnabled()),
 	}
 }
 
@@ -32,7 +34,7 @@ func (h *Handler) parseJSON(request any, body io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
-	err = h.v.Struct(request)
+	err = h.validate.Struct(request)
 	if err != nil {
 		return fmt.Errorf("validate: %w", err)
 	}
@@ -44,7 +46,8 @@ func (h *Handler) writeJSON(w http.ResponseWriter, status int, response any) {
 	w.WriteHeader(status)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		log.Error().
+		h.logger.
+			Error().
 			Err(err).
 			Int("status", status).
 			Any("response", response).
@@ -63,9 +66,9 @@ func (h *Handler) list(w http.ResponseWriter, list any, pagination *dto.Paginati
 func (h *Handler) fail(w http.ResponseWriter, err error) {
 	status := h.mapErrToStatus(err)
 
-	logger := log.Debug()
+	logger := h.logger.Debug()
 	if status >= 500 {
-		logger = log.Error()
+		logger = h.logger.Error()
 	}
 	logger.Err(err).
 		Int("status", status).

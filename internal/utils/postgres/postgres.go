@@ -1,22 +1,30 @@
 package postgres
 
 import (
+	"log"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq" // PostgreSQL driver
-	"github.com/rs/zerolog/log"
 )
 
-func NewPostgresDB(url string) *sqlx.DB {
-	client, err := sqlx.Connect("postgres", url)
+func NewPostgresDB(url string) (*sqlx.DB, error) {
+	db, err := sqlx.Connect("postgres", url)
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to connect to postgres")
+		return nil, err
 	}
 
-	client.SetMaxOpenConns(25)
-	client.SetMaxIdleConns(5)
-	client.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
-	return client
+	return db, nil
+}
+
+func MustNewPostgresDB(url string) *sqlx.DB {
+	db, err := NewPostgresDB(url)
+	if err != nil {
+		log.Fatalf("failed to connect to postgres: %v\n", err)
+	}
+	return db
 }

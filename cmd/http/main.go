@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -13,8 +14,6 @@ import (
 	"url_shortener/internal/handler"
 
 	"github.com/eerzho/simpledi"
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	swagger "github.com/swaggo/http-swagger"
 )
 
@@ -22,9 +21,7 @@ import (
 // @version  1.0
 // @BasePath /
 func main() {
-	initLog()
-
-	app.Setup()
+	app.MustSetup()
 	defer app.Close()
 
 	mux := http.NewServeMux()
@@ -41,9 +38,9 @@ func main() {
 	}
 
 	go func() {
-		log.Info().Str("port", server.Addr).Msg("starting http server")
+		log.Printf("starting http server on port: %s\n", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Error().Err(err).Msg("http server failed")
+			log.Printf("http server failed: %v\n", err)
 			return
 		}
 	}()
@@ -52,43 +49,15 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Info().Msg("shutting down server...")
+	log.Printf("shutting down server...\n")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Error().Err(err).Msg("server forced to shutdown")
+		log.Printf("server forced to shutdown: %v\n", err)
 		return
 	}
 
-	log.Info().Msg("http server exited")
-}
-
-func initLog() {
-	env := os.Getenv("APP_ENV")
-	if env == "" {
-		env = "dev"
-	}
-	zerolog.TimeFieldFormat = time.RFC3339
-
-	if env == "prod" {
-		zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	} else {
-		zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	}
-
-	if env == "prod" || env == "stage" {
-		log.Logger = zerolog.New(os.Stdout).With().
-			Timestamp().
-			Str("app_env", env).
-			Logger()
-	} else {
-		log.Logger = log.Output(zerolog.ConsoleWriter{
-			Out:        os.Stdout,
-			TimeFormat: time.RFC3339,
-		}).With().
-			Str("app_env", env).
-			Logger()
-	}
+	log.Printf("http server exited\n")
 }

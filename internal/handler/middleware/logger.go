@@ -5,15 +5,22 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type Logger struct {
+	logger    zerolog.Logger
 	ipService IPService
 }
 
-func NewLogger(ipService IPService) *Logger {
-	return &Logger{ipService: ipService}
+func NewLogger(
+	logger zerolog.Logger,
+	ipService IPService,
+) *Logger {
+	return &Logger{
+		logger:    logger,
+		ipService: ipService,
+	}
 }
 
 func (l *Logger) Handle(next http.Handler) http.Handler {
@@ -22,7 +29,7 @@ func (l *Logger) Handle(next http.Handler) http.Handler {
 		requestID := uuid.New().String()
 		w.Header().Set("X-Request-ID", requestID)
 		rw := &responseWriter{ResponseWriter: w}
-		logger := log.With().
+		logger := l.logger.With().
 			Str("ip", l.ipService.GetIP(r.Context(), r)).
 			Str("path", r.URL.Path).
 			Str("method", r.Method).

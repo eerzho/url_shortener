@@ -8,16 +8,18 @@ import (
 	"url_shortener/internal/model"
 	"url_shortener/pkg/async"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 )
 
 type URL struct {
+	logger          zerolog.Logger
 	pool            *async.WorkerPool
 	urlRepository   URLRepository
 	clickRepository ClickRepository
 }
 
 func NewURL(
+	logger zerolog.Logger,
 	urlRepository URLRepository,
 	clickRepository ClickRepository,
 ) *URL {
@@ -25,6 +27,7 @@ func NewURL(
 	pool.Start()
 
 	return &URL{
+		logger:          logger,
 		pool:            pool,
 		urlRepository:   urlRepository,
 		clickRepository: clickRepository,
@@ -59,7 +62,8 @@ func (u *URL) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	clickJob := func(jobCtx context.Context, workerId int) {
-		logger := log.With().
+		logger := u.logger.
+			With().
 			Str("ip", ip).
 			Int("url_id", url.ID).
 			Int("worker_id", workerId).

@@ -1,16 +1,25 @@
 package valkey
 
 import (
-	"github.com/rs/zerolog/log"
+	"log"
+
 	"github.com/valkey-io/valkey-go"
 )
 
-func NewValkeyClient(url string) valkey.Client {
+func NewValkeyClient(url string) (valkey.Client, error) {
 	client, err := valkey.NewClient(valkey.ClientOption{
 		InitAddress: []string{url},
 	})
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to connect to valkey")
+		return nil, err
+	}
+	return client, nil
+}
+
+func MustNewValkeyClient(url string) valkey.Client {
+	client, err := NewValkeyClient(url)
+	if err != nil {
+		log.Fatalf("failed to connect to valkey: %v\n", err)
 	}
 	return client
 }

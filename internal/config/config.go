@@ -1,15 +1,21 @@
 package config
 
 import (
+	"log"
+
 	"github.com/caarlos0/env/v11"
-	"github.com/rs/zerolog/log"
 )
 
 type (
 	Config struct {
+		APP      APP
 		HTTP     HTTP
 		Postgres Postgres
 		Valkey   Valkey
+	}
+
+	APP struct {
+		ENV string `env:"APP_ENV" envDefault:"prod"`
 	}
 
 	HTTP struct {
@@ -25,10 +31,18 @@ type (
 	}
 )
 
-func NewConfig() *Config {
+func NewConfig() (*Config, error) {
 	cfg, err := env.ParseAs[Config]()
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to parse to env")
+		return nil, err
 	}
-	return &cfg
+	return &cfg, nil
+}
+
+func MustNewConfig() *Config {
+	cfg, err := NewConfig()
+	if err != nil {
+		log.Fatalf("failed to parse to env: %v\n", err)
+	}
+	return cfg
 }

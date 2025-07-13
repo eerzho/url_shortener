@@ -1,22 +1,24 @@
 package app
 
 import (
+	"log"
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
 	"url_shortener/internal/handler/middleware"
-	"url_shortener/internal/repository/postgres"
-	"url_shortener/internal/repository/valkey"
+	repositorypostgres "url_shortener/internal/repository/postgres"
+	repositoryvalkey "url_shortener/internal/repository/valkey"
 	"url_shortener/internal/service"
+	utilslogger "url_shortener/internal/utils/logger"
 	utilspostgres "url_shortener/internal/utils/postgres"
 	utilsvalkey "url_shortener/internal/utils/valkey"
 
 	"github.com/eerzho/simpledi"
 	"github.com/jmoiron/sqlx"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
-func Setup() {
+func Setup() error {
 	setupUtils()
 	setupRepository()
 	setupService()
@@ -25,7 +27,15 @@ func Setup() {
 
 	err := simpledi.Resolve()
 	if err != nil {
-		log.Fatal().Err(err).Msg("failed to resolve dependencies")
+		return err
+	}
+	return nil
+}
+
+func MustSetup() {
+	err := Setup()
+	if err != nil {
+		log.Fatalf("failed to resolve dependencies: %v\n", err)
 	}
 }
 
@@ -34,14 +44,23 @@ func setupUtils() {
 		"config",
 		nil,
 		func() any {
-			return config.NewConfig()
+			return config.MustNewConfig()
+		},
+	)
+	simpledi.Register(
+		"logger",
+		[]string{"config"},
+		func() any {
+			return utilslogger.NewLogger(
+				simpledi.Get("config").(*config.Config).APP.ENV,
+			)
 		},
 	)
 	simpledi.Register(
 		"postgres",
 		[]string{"config"},
 		func() any {
-			return utilspostgres.NewPostgresDB(
+			return utilspostgres.MustNewPostgresDB(
 				simpledi.Get("config").(*config.Config).Postgres.URL,
 			)
 		},
@@ -50,7 +69,7 @@ func setupUtils() {
 		"valkey",
 		[]string{"config"},
 		func() any {
-			return utilsvalkey.NewValkeyClient(
+			return utilsvalkey.MustNewValkeyClient(
 				simpledi.Get("config").(*config.Config).Valkey.URL,
 			)
 		},
@@ -62,7 +81,7 @@ func setupRepository() {
 		"url_postgres_repository",
 		[]string{"postgres"},
 		func() any {
-			return postgres.NewURL(
+			return repositorypostgres.NewURL(
 				simpledi.Get("postgres").(*sqlx.DB),
 			)
 		},
@@ -71,18 +90,19 @@ func setupRepository() {
 		"click_postgres_repository",
 		[]string{"postgres"},
 		func() any {
-			return postgres.NewClick(
+			return repositorypostgres.NewClick(
 				simpledi.Get("postgres").(*sqlx.DB),
 			)
 		},
 	)
 	simpledi.Register(
 		"url_valkey_repository",
-		[]string{"valkey", "url_postgres_repository"},
+		[]string{"logger", "valkey", "url_postgres_repository"},
 		func() any {
-			return valkey.NewURL(
+			return repositoryvalkey.NewURL(
+				simpledi.Get("logger").(zerolog.Logger),
 				simpledi.Get("valkey").(valkeygo.Client),
-				simpledi.Get("url_postgres_repository").(*postgres.URL),
+				simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
 			)
 		},
 	)
@@ -91,11 +111,12 @@ func setupRepository() {
 func setupService() {
 	simpledi.Register(
 		"url_service",
-		[]string{"url_valkey_repository", "click_postgres_repository"},
+		[]string{"logger", "url_valkey_repository", "click_postgres_repository"},
 		func() any {
 			return service.NewURL(
-				simpledi.Get("url_valkey_repository").(*valkey.URL),
-				simpledi.Get("click_postgres_repository").(*postgres.Click),
+				simpledi.Get("logger").(zerolog.Logger),
+				simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
+				simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
 			)
 		},
 	)
@@ -111,7 +132,7 @@ func setupService() {
 		[]string{"click_postgres_repository"},
 		func() any {
 			return service.NewClick(
-				simpledi.Get("click_postgres_repository").(*postgres.Click),
+				simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
 			)
 		},
 	)
@@ -132,9 +153,10 @@ func setupMiddleware() {
 	)
 	simpledi.Register(
 		"logger_middleware",
-		[]string{"ip_service"},
+		[]string{"logger", "ip_service"},
 		func() any {
 			return middleware.NewLogger(
+				simpledi.Get("logger").(zerolog.Logger),
 				simpledi.Get("ip_service").(*service.IP),
 			)
 		},
@@ -144,9 +166,11 @@ func setupMiddleware() {
 func setupHandler() {
 	simpledi.Register(
 		"handler",
-		nil,
+		[]string{"logger"},
 		func() any {
-			return handler.New()
+			return handler.New(
+				simpledi.Get("logger").(zerolog.Logger),
+			)
 		},
 	)
 	simpledi.Register(
@@ -174,7 +198,7 @@ func setupHandler() {
 
 func Close() {
 	if err := simpledi.Get("postgres").(*sqlx.DB).Close(); err != nil {
-		log.Error().Err(err).Msg("failed to close postgres")
+		log.Printf("failed to close postgres: %v\n", err)
 	}
 	simpledi.Get("valkey").(valkeygo.Client).Close()
 	simpledi.Get("url_service").(*service.URL).Close()

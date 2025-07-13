@@ -8,20 +8,23 @@ import (
 	"url_shortener/internal/model"
 	"url_shortener/internal/repository"
 
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
 type URL struct {
+	logger     zerolog.Logger
 	client     valkeygo.Client
 	repository repository.URL
 }
 
 func NewURL(
+	logger zerolog.Logger,
 	client valkeygo.Client,
 	repository repository.URL,
 ) *URL {
 	return &URL{
+		logger:     logger,
 		client:     client,
 		repository: repository,
 	}
@@ -34,7 +37,8 @@ func (u *URL) Create(ctx context.Context, longURL, shortCode string) (*model.URL
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if err := u.addToCache(ctx, url); err != nil {
-		log.Error().
+		u.logger.
+			Error().
 			Err(fmt.Errorf("%s: %w", op, err)).
 			Int("id", url.ID).
 			Str("short_code", url.ShortCode).
@@ -60,7 +64,8 @@ func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL,
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if err := u.addToCache(ctx, url); err != nil {
-		log.Error().
+		u.logger.
+			Error().
 			Err(fmt.Errorf("%s: %w", op, err)).
 			Int("id", url.ID).
 			Str("short_code", url.ShortCode).
