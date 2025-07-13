@@ -5,18 +5,19 @@ import (
 	"url_shortener/internal/handler/request"
 )
 
-type Url struct {
+type URL struct {
 	*Handler
-	urlService UrlService
-	ipService  IpService
+
+	urlService URLService
+	ipService  IPService
 }
 
-func NewUrl(
+func NewURL(
 	handler *Handler,
-	urlService UrlService,
-	ipService IpService,
-) *Url {
-	return &Url{
+	urlService URLService,
+	ipService IPService,
+) *URL {
+	return &URL{
 		Handler:    handler,
 		urlService: urlService,
 		ipService:  ipService,
@@ -33,17 +34,17 @@ func NewUrl(
 // @Failure    400 {object} response.Fail
 // @Failure    500 {object} response.Fail
 // @Router     /urls [post]
-func (u *Url) Create(w http.ResponseWriter, r *http.Request) {
-	var request request.CreateUrl
-	err := u.parseJson(&request, r.Body)
+func (u *URL) Create(w http.ResponseWriter, r *http.Request) {
+	var request request.CreateURL
+	err := u.parseJSON(&request, r.Body)
 	if err != nil {
 		u.fail(w, err)
 		return
 	}
 	url, err := u.urlService.Create(
 		r.Context(),
-		request.LongUrl,
-		u.ipService.GetIp(r.Context(), r),
+		request.LongURL,
+		u.ipService.GetIP(r.Context(), r),
 		r.UserAgent(),
 	)
 	if err != nil {
@@ -62,7 +63,7 @@ func (u *Url) Create(w http.ResponseWriter, r *http.Request) {
 // @Failure   400 {object} response.Fail
 // @Failure   500 {object} response.Fail
 // @Router    /urls/{short_code} [get]
-func (u *Url) Stats(w http.ResponseWriter, r *http.Request) {
+func (u *URL) Stats(w http.ResponseWriter, r *http.Request) {
 	url, err := u.urlService.GetStats(
 		r.Context(),
 		r.PathValue("short_code"),
@@ -82,16 +83,16 @@ func (u *Url) Stats(w http.ResponseWriter, r *http.Request) {
 // @Failure   400 {object} response.Fail
 // @Failure   500 {object} response.Fail
 // @Router    /{short_code} [get]
-func (u *Url) Click(w http.ResponseWriter, r *http.Request) {
+func (u *URL) Click(w http.ResponseWriter, r *http.Request) {
 	url, err := u.urlService.Click(
 		r.Context(),
 		r.PathValue("short_code"),
-		u.ipService.GetIp(r.Context(), r),
+		u.ipService.GetIP(r.Context(), r),
 		r.UserAgent(),
 	)
 	if err != nil {
 		u.fail(w, err)
 		return
 	}
-	http.Redirect(w, r, url.LongUrl, http.StatusFound)
+	http.Redirect(w, r, url.LongURL, http.StatusFound)
 }

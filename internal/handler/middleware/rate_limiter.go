@@ -8,14 +8,14 @@ import (
 )
 
 type RateLimiter struct {
-	ipService IpService
+	ipService IPService
 	rateLimit int
 	burstSize int
 	cache     *inmemory.LruCache[*rate.Limiter]
 }
 
 func NewRateLimiter(
-	ipService IpService,
+	ipService IPService,
 	rateLimit int,
 	burstSize int,
 	cacheCapacity int,
@@ -30,7 +30,7 @@ func NewRateLimiter(
 
 func (rl *RateLimiter) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ip := rl.ipService.GetIp(r.Context(), r)
+		ip := rl.ipService.GetIP(r.Context(), r)
 		limiter, ok := rl.cache.Get(ip)
 		if !ok {
 			limiter = rate.NewLimiter(rate.Limit(rl.rateLimit), rl.burstSize)

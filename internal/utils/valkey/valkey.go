@@ -1,4 +1,4 @@
-package utils
+package valkey
 
 import (
 	"github.com/rs/zerolog/log"

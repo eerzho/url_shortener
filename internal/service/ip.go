@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-type Ip struct {
+type IP struct {
 }
 
-func NewIp() *Ip {
-	return &Ip{}
+func NewIP() *IP {
+	return &IP{}
 }
 
-func (i *Ip) GetIp(ctx context.Context, r *http.Request) string {
+func (i *IP) GetIP(_ context.Context, r *http.Request) string {
 	if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
 		parts := strings.Split(forwardedFor, ",")
 		ip := strings.TrimSpace(parts[0])
@@ -22,9 +22,9 @@ func (i *Ip) GetIp(ctx context.Context, r *http.Request) string {
 			return ip
 		}
 	}
-	if realIp := r.Header.Get("X-Real-IP"); realIp != "" {
-		if net.ParseIP(realIp) != nil {
-			return realIp
+	if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		if net.ParseIP(realIP) != nil {
+			return realIP
 		}
 	}
 	if ip, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {

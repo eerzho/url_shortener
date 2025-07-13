@@ -53,7 +53,7 @@ func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) (
 	return clicks, total, nil
 }
 
-func (c *Click) Create(ctx context.Context, urlId int, ip string, userAgent string) (*model.Click, error) {
+func (c *Click) Create(ctx context.Context, urlID int, ip string, userAgent string) (*model.Click, error) {
 	const op = "repository.postgres.Click.Create"
 	var click model.Click
 	err := c.db.GetContext(ctx, &click,
@@ -62,7 +62,7 @@ func (c *Click) Create(ctx context.Context, urlId int, ip string, userAgent stri
 			values ($1, $2, $3)
 			returning *
 		`,
-		urlId, ip, userAgent,
+		urlID, ip, userAgent,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

@@ -1,14 +1,14 @@
-package utils
+package postgres
 
 import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/rs/zerolog/log"
 )
 
-func NewPostgresDb(url string) *sqlx.DB {
+func NewPostgresDB(url string) *sqlx.DB {
 	client, err := sqlx.Connect("postgres", url)
 	if err != nil {
 		log.Fatal().Err(err).Msg("failed to connect to postgres")

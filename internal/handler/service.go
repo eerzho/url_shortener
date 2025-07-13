@@ -7,14 +7,14 @@ import (
 	"url_shortener/internal/model"
 )
 
-type UrlService interface {
-	Create(ctx context.Context, longUrl, ip, userAgent string) (*model.Url, error)
-	Click(ctx context.Context, shortCode, ip, userAgent string) (*model.Url, error)
-	GetStats(ctx context.Context, shortCode string) (*model.UrlWithClicksCount, error)
+type URLService interface {
+	Create(ctx context.Context, longURL, ip, userAgent string) (*model.URL, error)
+	Click(ctx context.Context, shortCode, ip, userAgent string) (*model.URL, error)
+	GetStats(ctx context.Context, shortCode string) (*model.URLWithClicksCount, error)
 }
 
-type IpService interface {
-	GetIp(ctx context.Context, r *http.Request) string
+type IPService interface {
+	GetIP(ctx context.Context, r *http.Request) string
 }
 
 type ClickService interface {

@@ -5,6 +5,6 @@ import (
 	"net/http"
 )
 
-type IpService interface {
-	GetIp(ctx context.Context, r *http.Request) string
+type IPService interface {
+	GetIP(ctx context.Context, r *http.Request) string
 }

@@ -11,24 +11,24 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type Url struct {
+type URL struct {
 	db *sqlx.DB
 }
 
-func NewUrl(db *sqlx.DB) *Url {
-	return &Url{db: db}
+func NewURL(db *sqlx.DB) *URL {
+	return &URL{db: db}
 }
 
-func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url, error) {
+func (u *URL) Create(ctx context.Context, longURL, shortCode string) (*model.URL, error) {
 	const op = "repository.postgres.Url.Create"
-	var url model.Url
+	var url model.URL
 	err := u.db.GetContext(ctx, &url,
 		`
 			insert into urls (long_url, short_code)
 			values ($1, $2)
 			returning *
 		`,
-		longUrl, shortCode,
+		longURL, shortCode,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
@@ -36,7 +36,7 @@ func (u *Url) Create(ctx context.Context, longUrl, shortCode string) (*model.Url
 	return &url, nil
 }
 
-func (u *Url) ExistsByShortCode(ctx context.Context, shortCode string) (bool, error) {
+func (u *URL) ExistsByShortCode(ctx context.Context, shortCode string) (bool, error) {
 	const op = "repository.postgres.Url.ExistsByShortCode"
 	var count int
 	err := u.db.GetContext(ctx, &count,
@@ -49,9 +49,9 @@ func (u *Url) ExistsByShortCode(ctx context.Context, shortCode string) (bool, er
 	return count > 0, nil
 }
 
-func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url, error) {
+func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL, error) {
 	const op = "repository.postgres.Url.GetByShortCode"
-	var url model.Url
+	var url model.URL
 	err := u.db.GetContext(ctx, &url,
 		`select * from urls where short_code = $1`,
 		shortCode,
@@ -65,9 +65,9 @@ func (u *Url) GetByShortCode(ctx context.Context, shortCode string) (*model.Url,
 	return &url, nil
 }
 
-func (u *Url) GetWithClicksCountByShortCode(ctx context.Context, shortCode string) (*model.UrlWithClicksCount, error) {
+func (u *URL) GetWithClicksCountByShortCode(ctx context.Context, shortCode string) (*model.URLWithClicksCount, error) {
 	const op = "repository.postgres.Url.GetWithClicksCountByShortCode"
-	var url model.UrlWithClicksCount
+	var url model.URLWithClicksCount
 	err := u.db.GetContext(ctx, &url,
 		`
 			select u.*, count(c.id) clicks_count from urls u

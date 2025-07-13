@@ -27,7 +27,7 @@ func New() *Handler {
 	}
 }
 
-func (h *Handler) parseJson(request any, body io.Reader) error {
+func (h *Handler) parseJSON(request any, body io.Reader) error {
 	err := json.NewDecoder(body).Decode(request)
 	if err != nil {
 		return fmt.Errorf("decode: %w", err)
@@ -39,7 +39,7 @@ func (h *Handler) parseJson(request any, body io.Reader) error {
 	return nil
 }
 
-func (h *Handler) writeJson(w http.ResponseWriter, status int, response any) {
+func (h *Handler) writeJSON(w http.ResponseWriter, status int, response any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
@@ -53,11 +53,11 @@ func (h *Handler) writeJson(w http.ResponseWriter, status int, response any) {
 }
 
 func (h *Handler) ok(w http.ResponseWriter, status int, data any) {
-	h.writeJson(w, status, response.Ok{Data: data})
+	h.writeJSON(w, status, response.Ok{Data: data})
 }
 
 func (h *Handler) list(w http.ResponseWriter, list any, pagination *dto.Pagination) {
-	h.writeJson(w, http.StatusOK, response.List{Data: list, Pagination: pagination})
+	h.writeJSON(w, http.StatusOK, response.List{Data: list, Pagination: pagination})
 }
 
 func (h *Handler) fail(w http.ResponseWriter, err error) {
@@ -71,7 +71,7 @@ func (h *Handler) fail(w http.ResponseWriter, err error) {
 		Int("status", status).
 		Msg("error occurred")
 
-	h.writeJson(w, status, h.createFailResponse(err, status))
+	h.writeJSON(w, status, h.createFailResponse(err, status))
 }
 
 func (h *Handler) unwrapErr(err error) error {
@@ -121,7 +121,7 @@ func (h *Handler) mapErrToStatus(err error) int {
 func Setup(mux *http.ServeMux) {
 	rateLimiterMiddleware := simpledi.Get("rate_limiter_middleware").(*middleware.RateLimiter)
 	loggerMiddleware := simpledi.Get("logger_middleware").(*middleware.Logger)
-	urlHandler := simpledi.Get("url_handler").(*Url)
+	urlHandler := simpledi.Get("url_handler").(*URL)
 	clickHandler := simpledi.Get("click_handler").(*Click)
 
 	mux.Handle("POST /urls", middleware.ChainFunc(

@@ -7,6 +7,7 @@ import (
 
 type Click struct {
 	*Handler
+
 	clickService ClickService
 }
 

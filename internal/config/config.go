@@ -7,21 +7,21 @@ import (
 
 type (
 	Config struct {
-		Http     Http
+		HTTP     HTTP
 		Postgres Postgres
 		Valkey   Valkey
 	}
 
-	Http struct {
+	HTTP struct {
 		Port string `env:"HTTP_PORT,required"`
 	}
 
 	Postgres struct {
-		Url string `env:"POSTGRES_URL,required"`
+		URL string `env:"POSTGRES_URL,required"`
 	}
 
 	Valkey struct {
-		Url string `env:"VALKEY_URL,required"`
+		URL string `env:"VALKEY_URL,required"`
 	}
 )
 

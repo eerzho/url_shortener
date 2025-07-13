@@ -18,7 +18,54 @@ import (
 	swagger "github.com/swaggo/http-swagger"
 )
 
-func init() {
+// @title    url shortener api
+// @version  1.0
+// @BasePath /
+func main() {
+	initLog()
+
+	app.Setup()
+	defer app.Close()
+
+	mux := http.NewServeMux()
+	mux.Handle("/swagger/", swagger.WrapHandler)
+
+	handler.Setup(mux)
+
+	server := &http.Server{
+		Addr:         ":" + simpledi.Get("config").(*config.Config).HTTP.Port,
+		Handler:      mux,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	go func() {
+		log.Info().Str("port", server.Addr).Msg("starting http server")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Error().Err(err).Msg("http server failed")
+			return
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	log.Info().Msg("shutting down server...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := server.Shutdown(ctx); err != nil {
+		log.Error().Err(err).Msg("server forced to shutdown")
+		return
+	}
+
+	log.Info().Msg("http server exited")
+}
+
+func initLog() {
 	env := os.Getenv("APP_ENV")
 	if env == "" {
 		env = "dev"
@@ -44,47 +91,4 @@ func init() {
 			Str("app_env", env).
 			Logger()
 	}
-}
-
-// @title    url shortener api
-// @version  1.0
-// @BasePath /
-func main() {
-	app.Setup()
-	defer app.Close()
-
-	mux := http.NewServeMux()
-	mux.Handle("/swagger/", swagger.WrapHandler)
-
-	handler.Setup(mux)
-
-	server := &http.Server{
-		Addr:         ":" + simpledi.Get("config").(*config.Config).Http.Port,
-		Handler:      mux,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
-	go func() {
-		log.Info().Str("port", server.Addr).Msg("starting http server")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal().Err(err).Msg("http server failed")
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	log.Info().Msg("shutting down server...")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		log.Fatal().Err(err).Msg("server forced to shutdown")
-	}
-
-	log.Info().Msg("http server exited")
 }
