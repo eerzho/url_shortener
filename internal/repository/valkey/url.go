@@ -17,7 +17,10 @@ type Url struct {
 	repository repository.Url
 }
 
-func New(client valkeygo.Client, repository repository.Url) *Url {
+func New(
+	client valkeygo.Client,
+	repository repository.Url,
+) *Url {
 	return &Url{
 		client:     client,
 		repository: repository,
@@ -76,13 +79,23 @@ func (u *Url) addToCache(ctx context.Context, url *model.Url) error {
 		return err
 	}
 	key := u.buildCacheKey(url.ShortCode)
-	cmd := u.client.B().Set().Key(key).Value(string(data)).Ex(24 * time.Hour).Build()
+	cmd := u.client.
+		B().
+		Set().
+		Key(key).
+		Value(string(data)).
+		Ex(24 * time.Hour).
+		Build()
 	return u.client.Do(ctx, cmd).Error()
 }
 
 func (u *Url) getFromCache(ctx context.Context, shortCode string) (*model.Url, error) {
 	key := u.buildCacheKey(shortCode)
-	cmd := u.client.B().Get().Key(key).Build()
+	cmd := u.client.
+		B().
+		Get().
+		Key(key).
+		Build()
 	result := u.client.Do(ctx, cmd)
 	if result.Error() != nil {
 		return nil, result.Error()
