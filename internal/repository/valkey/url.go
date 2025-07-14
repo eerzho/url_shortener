@@ -17,26 +17,29 @@ const (
 )
 
 type URL struct {
-	logger     *slog.Logger
-	client     valkeygo.Client
-	repository repository.URL
+	logger *slog.Logger
+	client valkeygo.Client
+	reader repository.URLReader
+	writer repository.URLWriter
 }
 
 func NewURL(
 	logger *slog.Logger,
 	client valkeygo.Client,
-	repository repository.URL,
+	reader repository.URLReader,
+	writer repository.URLWriter,
 ) *URL {
 	return &URL{
-		logger:     logger,
-		client:     client,
-		repository: repository,
+		logger: logger,
+		client: client,
+		reader: reader,
+		writer: writer,
 	}
 }
 
 func (u *URL) Create(ctx context.Context, longURL, shortCode string) (*model.URL, error) {
 	const op = "repository.valkey.Url.Create"
-	url, err := u.repository.Create(ctx, longURL, shortCode)
+	url, err := u.writer.Create(ctx, longURL, shortCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -54,7 +57,7 @@ func (u *URL) ExistsByShortCode(ctx context.Context, shortCode string) (bool, er
 	if _, err := u.getFromCache(ctx, shortCode); err == nil {
 		return true, nil
 	}
-	return u.repository.ExistsByShortCode(ctx, shortCode)
+	return u.reader.ExistsByShortCode(ctx, shortCode)
 }
 
 func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL, error) {
@@ -62,7 +65,7 @@ func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL,
 	if url, err := u.getFromCache(ctx, shortCode); err == nil {
 		return url, nil
 	}
-	url, err := u.repository.GetByShortCode(ctx, shortCode)
+	url, err := u.reader.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -77,7 +80,7 @@ func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL,
 }
 
 func (u *URL) GetWithClicksCountByShortCode(ctx context.Context, shortCode string) (*model.URLWithClicksCount, error) {
-	return u.repository.GetWithClicksCountByShortCode(ctx, shortCode)
+	return u.reader.GetWithClicksCountByShortCode(ctx, shortCode)
 }
 
 func (u *URL) addToCache(ctx context.Context, url *model.URL) error {

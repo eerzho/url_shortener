@@ -14,12 +14,14 @@ const (
 )
 
 type Click struct {
-	clickRepository ClickRepository
+	clickReader ClickReader
 }
 
-func NewClick(clickRepository ClickRepository) *Click {
+func NewClick(
+	clickReader ClickReader,
+) *Click {
 	return &Click{
-		clickRepository: clickRepository,
+		clickReader: clickReader,
 	}
 }
 
@@ -27,7 +29,7 @@ func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) (
 	const op = "service.Click.GetList"
 	page = max(page, MinPaginationPage)
 	size = min(max(size, MinPaginationSize), MaxPaginationSize)
-	list, total, err := c.clickRepository.GetList(ctx, shortCode, page, size)
+	list, total, err := c.clickReader.GetList(ctx, shortCode, page, size)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
 	}

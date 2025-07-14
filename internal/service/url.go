@@ -16,16 +16,18 @@ const (
 )
 
 type URL struct {
-	logger          *slog.Logger
-	pool            *async.WorkerPool
-	urlRepository   URLRepository
-	clickRepository ClickRepository
+	logger      *slog.Logger
+	pool        *async.WorkerPool
+	urlReader   URLReader
+	urlWriter   URLWriter
+	clickWriter ClickWriter
 }
 
 func NewURL(
 	logger *slog.Logger,
-	urlRepository URLRepository,
-	clickRepository ClickRepository,
+	urlReader URLReader,
+	urlWriter URLWriter,
+	clickWriter ClickWriter,
 ) *URL {
 	pool := async.NewWorkerPool(
 		DefaultWorkerCount,
@@ -34,10 +36,11 @@ func NewURL(
 	pool.Start()
 
 	return &URL{
-		logger:          logger,
-		pool:            pool,
-		urlRepository:   urlRepository,
-		clickRepository: clickRepository,
+		logger:      logger,
+		pool:        pool,
+		urlReader:   urlReader,
+		urlWriter:   urlWriter,
+		clickWriter: clickWriter,
 	}
 }
 
@@ -48,14 +51,14 @@ func (u *URL) Close() {
 func (u *URL) Create(ctx context.Context, longURL, ip, userAgent string) (*model.URL, error) {
 	const op = "service.Url.Create"
 	shortCode := u.generateShortCode(longURL, ip, userAgent)
-	exists, err := u.urlRepository.ExistsByShortCode(ctx, shortCode)
+	exists, err := u.urlReader.ExistsByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if exists {
 		return nil, fmt.Errorf("%s: %w", op, constant.ErrAlreadyExists)
 	}
-	url, err := u.urlRepository.Create(ctx, longURL, shortCode)
+	url, err := u.urlWriter.Create(ctx, longURL, shortCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -64,7 +67,7 @@ func (u *URL) Create(ctx context.Context, longURL, ip, userAgent string) (*model
 
 func (u *URL) Click(ctx context.Context, shortCode, ip, userAgent string) (*model.URL, error) {
 	const op = "service.Url.Click"
-	url, err := u.urlRepository.GetByShortCode(ctx, shortCode)
+	url, err := u.urlReader.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
@@ -79,7 +82,7 @@ func (u *URL) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 
 		logger.DebugContext(jobCtx, "creating click")
 
-		click, e := u.clickRepository.Create(jobCtx, url.ID, ip, userAgent)
+		click, e := u.clickWriter.Create(jobCtx, url.ID, ip, userAgent)
 		if e != nil {
 			logger.ErrorContext(jobCtx, "failed to create click",
 				slog.Any("error", e),
@@ -100,7 +103,7 @@ func (u *URL) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 
 func (u *URL) GetStats(ctx context.Context, shortCode string) (*model.URLWithClicksCount, error) {
 	const op = "service.Url.GetStats"
-	url, err := u.urlRepository.GetWithClicksCountByShortCode(ctx, shortCode)
+	url, err := u.urlReader.GetWithClicksCountByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}

@@ -111,6 +111,7 @@ func components() []component {
 					simpledi.Get("logger").(*slog.Logger),
 					simpledi.Get("valkey").(valkeygo.Client),
 					simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
+					simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
 				)
 			},
 		},
@@ -121,6 +122,7 @@ func components() []component {
 			func() any {
 				return service.NewURL(
 					simpledi.Get("logger").(*slog.Logger),
+					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
 					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
 					simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
 				)
