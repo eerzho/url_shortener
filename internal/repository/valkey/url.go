@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"time"
 	"url_shortener/internal/model"
 	"url_shortener/internal/repository"
 
-	"github.com/rs/zerolog"
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
@@ -17,13 +17,13 @@ const (
 )
 
 type URL struct {
-	logger     zerolog.Logger
+	logger     *slog.Logger
 	client     valkeygo.Client
 	repository repository.URL
 }
 
 func NewURL(
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	client valkeygo.Client,
 	repository repository.URL,
 ) *URL {
@@ -41,12 +41,11 @@ func (u *URL) Create(ctx context.Context, longURL, shortCode string) (*model.URL
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if err = u.addToCache(ctx, url); err != nil {
-		u.logger.
-			Error().
-			Err(fmt.Errorf("%s: %w", op, err)).
-			Int("id", url.ID).
-			Str("short_code", url.ShortCode).
-			Msg("failed to cache url")
+		u.logger.ErrorContext(ctx, "failed to cache url",
+			slog.Int("id", url.ID),
+			slog.String("short_code", url.ShortCode),
+			slog.Any("error", fmt.Errorf("%s: %w", op, err)),
+		)
 	}
 	return url, nil
 }
@@ -68,12 +67,11 @@ func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL,
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	if err = u.addToCache(ctx, url); err != nil {
-		u.logger.
-			Error().
-			Err(fmt.Errorf("%s: %w", op, err)).
-			Int("id", url.ID).
-			Str("short_code", url.ShortCode).
-			Msg("failed to cache url")
+		u.logger.ErrorContext(ctx, "failed to cache url",
+			slog.Int("id", url.ID),
+			slog.String("short_code", url.ShortCode),
+			slog.Any("error", fmt.Errorf("%s: %w", op, err)),
+		)
 	}
 	return url, nil
 }

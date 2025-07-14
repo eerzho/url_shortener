@@ -1,20 +1,20 @@
 package middleware
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rs/zerolog"
 )
 
 type Logger struct {
-	logger    zerolog.Logger
+	logger    *slog.Logger
 	ipService IPService
 }
 
 func NewLogger(
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	ipService IPService,
 ) *Logger {
 	return &Logger{
@@ -28,23 +28,27 @@ func (l *Logger) Handle(next http.Handler) http.Handler {
 		start := time.Now()
 		requestID := uuid.New().String()
 		w.Header().Set("X-Request-ID", requestID)
+
+		logger := l.logger.With(
+			slog.String("ip", l.ipService.GetIP(r.Context(), r)),
+			slog.String("path", r.URL.Path),
+			slog.String("method", r.Method),
+			slog.String("query", r.URL.RawQuery),
+			slog.String("request_id", requestID),
+			slog.String("user_agent", r.UserAgent()),
+			slog.Int("request_size", int(r.ContentLength)),
+		)
+
+		logger.InfoContext(r.Context(), "request started")
+
 		rw := &responseWriter{ResponseWriter: w}
-		logger := l.logger.With().
-			Str("ip", l.ipService.GetIP(r.Context(), r)).
-			Str("path", r.URL.Path).
-			Str("method", r.Method).
-			Str("query", r.URL.RawQuery).
-			Str("request_id", requestID).
-			Str("user_agent", r.UserAgent()).
-			Int("request_size", int(r.ContentLength)).
-			Logger()
-		logger.Info().Msg("request started")
 		next.ServeHTTP(rw, r)
-		logger.Info().
-			Int("response_size", rw.size).
-			Int("status_code", rw.statusCode).
-			Dur("duration", time.Since(start)).
-			Msg("request finished")
+
+		logger.InfoContext(r.Context(), "request finished",
+			slog.Int("response_size", rw.size),
+			slog.Int("status_code", rw.statusCode),
+			slog.Duration("duration", time.Since(start)),
+		)
 	})
 }
 

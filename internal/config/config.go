@@ -1,7 +1,8 @@
 package config
 
 import (
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -39,10 +40,11 @@ func NewConfig() (*Config, error) {
 	return &cfg, nil
 }
 
-func MustNewConfig() *Config {
+func MustNewConfig(logger *slog.Logger) *Config {
 	cfg, err := NewConfig()
 	if err != nil {
-		log.Fatalf("failed to parse to env: %v\n", err)
+		logger.Error("failed to parse to env", slog.Any("error", err))
+		os.Exit(1)
 	}
 	return cfg
 }

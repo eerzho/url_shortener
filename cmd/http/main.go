@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,6 +12,7 @@ import (
 	"url_shortener/internal/app"
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
+	utilslogger "url_shortener/internal/utils/logger"
 
 	"github.com/eerzho/simpledi"
 	swagger "github.com/swaggo/http-swagger"
@@ -30,8 +31,10 @@ const (
 //	@Version	1.0
 //	@BasePath	/
 func main() {
-	app.MustSetup()
-	defer app.Close()
+	logger := utilslogger.NewLogger(os.Getenv("APP_ENV"))
+
+	app.MustSetup(logger)
+	defer app.Close(logger)
 
 	mux := http.NewServeMux()
 	mux.Handle("/swagger/", swagger.WrapHandler)
@@ -47,9 +50,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("starting http server on port: %s\n", server.Addr)
+		logger.Info("starting http server", slog.String("port", server.Addr))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("http server failed: %v\n", err)
+			logger.Error("http server failed", slog.Any("error", err))
 			return
 		}
 	}()
@@ -58,15 +61,15 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	log.Printf("shutting down server...\n")
+	logger.Info("shutting down server...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), DefaultRequestTimeout)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("server forced to shutdown: %v\n", err)
+		logger.Error("server forced to shutdown", slog.Any("error", err))
 		return
 	}
 
-	log.Printf("http server exited\n")
+	logger.Info("http server exited")
 }

@@ -1,7 +1,8 @@
 package valkey
 
 import (
-	"log"
+	"log/slog"
+	"os"
 
 	"github.com/valkey-io/valkey-go"
 )
@@ -16,10 +17,16 @@ func NewValkeyClient(url string) (valkey.Client, error) {
 	return client, nil
 }
 
-func MustNewValkeyClient(url string) valkey.Client {
+func MustNewValkeyClient(
+	logger *slog.Logger,
+	url string,
+) valkey.Client {
 	client, err := NewValkeyClient(url)
 	if err != nil {
-		log.Fatalf("failed to connect to valkey: %v\n", err)
+		logger.Error("failed to connect to valkey",
+			slog.Any("error", err),
+		)
+		os.Exit(1)
 	}
 	return client
 }

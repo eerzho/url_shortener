@@ -1,7 +1,8 @@
 package postgres
 
 import (
-	"log"
+	"log/slog"
+	"os"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -27,10 +28,16 @@ func NewPostgresDB(url string) (*sqlx.DB, error) {
 	return db, nil
 }
 
-func MustNewPostgresDB(url string) *sqlx.DB {
+func MustNewPostgresDB(
+	logger *slog.Logger,
+	url string,
+) *sqlx.DB {
 	db, err := NewPostgresDB(url)
 	if err != nil {
-		log.Fatalf("failed to connect to postgres: %v\n", err)
+		logger.Error("failed to connect to postgres",
+			slog.Any("error", err),
+		)
+		os.Exit(1)
 	}
 	return db
 }

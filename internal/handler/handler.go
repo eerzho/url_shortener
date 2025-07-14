@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"url_shortener/internal/constant"
 	"url_shortener/internal/dto"
@@ -14,15 +15,14 @@ import (
 
 	"github.com/eerzho/simpledi"
 	"github.com/go-playground/validator/v10"
-	"github.com/rs/zerolog"
 )
 
 type Handler struct {
-	logger   zerolog.Logger
+	logger   *slog.Logger
 	validate *validator.Validate
 }
 
-func New(logger zerolog.Logger) *Handler {
+func New(logger *slog.Logger) *Handler {
 	return &Handler{
 		logger:   logger,
 		validate: validator.New(validator.WithRequiredStructEnabled()),
@@ -46,12 +46,11 @@ func (h *Handler) writeJSON(w http.ResponseWriter, status int, response any) {
 	w.WriteHeader(status)
 
 	if err := json.NewEncoder(w).Encode(response); err != nil {
-		h.logger.
-			Error().
-			Err(err).
-			Int("status", status).
-			Any("response", response).
-			Msg("failed to encode response")
+		h.logger.Error("failed to encode response",
+			slog.Any("error", err),
+			slog.Int("status", status),
+			slog.Any("response", response),
+		)
 	}
 }
 
@@ -66,13 +65,15 @@ func (h *Handler) list(w http.ResponseWriter, list any, pagination *dto.Paginati
 func (h *Handler) fail(w http.ResponseWriter, err error) {
 	status := h.mapErrToStatus(err)
 
-	logger := h.logger.Debug()
+	level := slog.LevelDebug
 	if status >= http.StatusInternalServerError {
-		logger = h.logger.Error()
+		level = slog.LevelError
 	}
-	logger.Err(err).
-		Int("status", status).
-		Msg("error occurred")
+
+	h.logger.LogAttrs(context.Background(), level, "error occurred",
+		slog.Any("error", err),
+		slog.Int("status", status),
+	)
 
 	h.writeJSON(w, status, h.createFailResponse(err, status))
 }

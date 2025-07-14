@@ -4,11 +4,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"log/slog"
 	"url_shortener/internal/constant"
 	"url_shortener/internal/model"
 	"url_shortener/pkg/async"
-
-	"github.com/rs/zerolog"
 )
 
 const (
@@ -17,14 +16,14 @@ const (
 )
 
 type URL struct {
-	logger          zerolog.Logger
+	logger          *slog.Logger
 	pool            *async.WorkerPool
 	urlRepository   URLRepository
 	clickRepository ClickRepository
 }
 
 func NewURL(
-	logger zerolog.Logger,
+	logger *slog.Logger,
 	urlRepository URLRepository,
 	clickRepository ClickRepository,
 ) *URL {
@@ -70,21 +69,27 @@ func (u *URL) Click(ctx context.Context, shortCode, ip, userAgent string) (*mode
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 	clickJob := func(jobCtx context.Context, workerId int) {
-		logger := u.logger.
-			With().
-			Str("ip", ip).
-			Int("url_id", url.ID).
-			Int("worker_id", workerId).
-			Str("user_agent", userAgent).
-			Str("url_short_code", shortCode).
-			Logger()
-		logger.Debug().Msg("creating click")
+		logger := u.logger.With(
+			slog.String("ip", ip),
+			slog.Int("url_id", url.ID),
+			slog.Int("worker_id", workerId),
+			slog.String("user_agent", userAgent),
+			slog.String("url_short_code", shortCode),
+		)
+
+		logger.DebugContext(jobCtx, "creating click")
+
 		click, e := u.clickRepository.Create(jobCtx, url.ID, ip, userAgent)
 		if e != nil {
-			logger.Error().Err(e).Msg("failed to create click")
+			logger.ErrorContext(jobCtx, "failed to create click",
+				slog.Any("error", e),
+			)
 			return
 		}
-		logger.Debug().Int("click_id", click.ID).Msg("created click")
+
+		logger.DebugContext(jobCtx, "created click",
+			slog.Int("click_id", click.ID),
+		)
 	}
 	err = u.pool.Submit(clickJob)
 	if err != nil {

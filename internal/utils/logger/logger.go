@@ -1,39 +1,28 @@
 package logger
 
 import (
+	"log/slog"
 	"os"
-	"time"
-
-	"github.com/rs/zerolog"
 )
 
-func NewLogger(env string) zerolog.Logger {
-	var level zerolog.Level
+func NewLogger(env string) *slog.Logger {
+	var level slog.Level
 	if env == "prod" {
-		level = zerolog.InfoLevel
+		level = slog.LevelInfo
 	} else {
-		level = zerolog.DebugLevel
+		level = slog.LevelDebug
 	}
 
-	var logger zerolog.Logger
+	opts := &slog.HandlerOptions{Level: level}
+
+	var handler slog.Handler
 	if env == "prod" || env == "stage" {
-		logger = zerolog.New(os.Stdout).
-			Level(level).
-			With().
-			Timestamp().
-			Str("app_env", env).
-			Logger()
+		handler = slog.NewJSONHandler(os.Stdout, opts)
 	} else {
-		logger = zerolog.New(zerolog.ConsoleWriter{
-			Out:        os.Stdout,
-			TimeFormat: time.RFC3339,
-		}).
-			Level(level).
-			With().
-			Timestamp().
-			Str("app_env", env).
-			Logger()
+		handler = slog.NewTextHandler(os.Stdout, opts)
 	}
 
-	return logger
+	return slog.New(handler).With(
+		slog.String("app_env", env),
+	)
 }
