@@ -7,25 +7,24 @@ import (
 	"golang.org/x/time/rate"
 )
 
-const (
-	DefaultRateLimit     = 10
-	DefaultBurstSize     = 20
-	DefaultCacheCapacity = 1_000
-)
-
 type RateLimiter struct {
+	rps       int
+	burst     int
 	ipService IPService
-	rateLimit int
-	burstSize int
 	cache     *inmemory.LruCache[*rate.Limiter]
 }
 
-func NewRateLimiter(ipService IPService) *RateLimiter {
+func NewRateLimiter(
+	rps int,
+	burst int,
+	cacheCapacity int,
+	ipService IPService,
+) *RateLimiter {
 	return &RateLimiter{
+		rps:       rps,
+		burst:     burst,
 		ipService: ipService,
-		rateLimit: DefaultRateLimit,
-		burstSize: DefaultBurstSize,
-		cache:     inmemory.NewLruCache[*rate.Limiter](DefaultCacheCapacity),
+		cache:     inmemory.NewLruCache[*rate.Limiter](cacheCapacity),
 	}
 }
 
@@ -34,7 +33,7 @@ func (rl *RateLimiter) Handle(next http.Handler) http.Handler {
 		ip := rl.ipService.GetIP(r.Context(), r)
 		limiter, ok := rl.cache.Get(ip)
 		if !ok {
-			limiter = rate.NewLimiter(rate.Limit(rl.rateLimit), rl.burstSize)
+			limiter = rate.NewLimiter(rate.Limit(rl.rps), rl.burst)
 			rl.cache.Put(ip, limiter)
 		}
 		if !limiter.Allow() {

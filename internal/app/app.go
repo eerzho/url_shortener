@@ -71,6 +71,9 @@ func components() []component {
 				return utilspostgres.MustNewPostgresDB(
 					simpledi.Get("logger").(*slog.Logger),
 					simpledi.Get("config").(*config.Config).Postgres.URL,
+					simpledi.Get("config").(*config.Config).Postgres.MaxOpenConns,
+					simpledi.Get("config").(*config.Config).Postgres.MaxIdleConns,
+					simpledi.Get("config").(*config.Config).Postgres.ConnMaxLifetime,
 				)
 			},
 		},
@@ -105,9 +108,10 @@ func components() []component {
 		},
 		{
 			"url_valkey_repository",
-			[]string{"logger", "valkey", "url_postgres_repository"},
+			[]string{"config", "logger", "valkey", "url_postgres_repository"},
 			func() any {
 				return repositoryvalkey.NewURL(
+					simpledi.Get("config").(*config.Config).TTL.URLCache,
 					simpledi.Get("logger").(*slog.Logger),
 					simpledi.Get("valkey").(valkeygo.Client),
 					simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
@@ -118,9 +122,11 @@ func components() []component {
 		// service
 		{
 			"url_service",
-			[]string{"logger", "url_valkey_repository", "click_postgres_repository"},
+			[]string{"config", "logger", "url_valkey_repository", "click_postgres_repository"},
 			func() any {
 				return service.NewURL(
+					simpledi.Get("config").(*config.Config).WorkerPool.URLCount,
+					simpledi.Get("config").(*config.Config).WorkerPool.URLBufferSize,
 					simpledi.Get("logger").(*slog.Logger),
 					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
 					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
@@ -137,9 +143,12 @@ func components() []component {
 		},
 		{
 			"click_service",
-			[]string{"click_postgres_repository"},
+			[]string{"config", "click_postgres_repository"},
 			func() any {
 				return service.NewClick(
+					simpledi.Get("config").(*config.Config).Pagination.MinPage,
+					simpledi.Get("config").(*config.Config).Pagination.MinSize,
+					simpledi.Get("config").(*config.Config).Pagination.MaxSize,
 					simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
 				)
 			},
@@ -147,9 +156,12 @@ func components() []component {
 		// middleware
 		{
 			"rate_limiter_middleware",
-			[]string{"ip_service"},
+			[]string{"config", "ip_service"},
 			func() any {
 				return middleware.NewRateLimiter(
+					simpledi.Get("config").(*config.Config).RateLimit.RPS,
+					simpledi.Get("config").(*config.Config).RateLimit.Burst,
+					simpledi.Get("config").(*config.Config).RateLimit.CacheCapacity,
 					simpledi.Get("ip_service").(*service.IP),
 				)
 			},

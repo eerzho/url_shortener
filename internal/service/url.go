@@ -10,11 +10,6 @@ import (
 	"url_shortener/pkg/async"
 )
 
-const (
-	DefaultWorkerCount = 10
-	DefaultBufferSize  = 50_000
-)
-
 type URL struct {
 	logger      *slog.Logger
 	pool        *async.WorkerPool
@@ -24,15 +19,14 @@ type URL struct {
 }
 
 func NewURL(
+	workerCount int,
+	bufferSize int,
 	logger *slog.Logger,
 	urlReader URLReader,
 	urlWriter URLWriter,
 	clickWriter ClickWriter,
 ) *URL {
-	pool := async.NewWorkerPool(
-		DefaultWorkerCount,
-		DefaultBufferSize,
-	)
+	pool := async.NewWorkerPool(workerCount, bufferSize)
 	pool.Start()
 
 	return &URL{

@@ -12,28 +12,27 @@ import (
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
-const (
-	URLCacheDuration = 24 * time.Hour
-)
-
 type URL struct {
-	logger *slog.Logger
-	client valkeygo.Client
-	reader repository.URLReader
-	writer repository.URLWriter
+	ttlURLCache time.Duration
+	logger      *slog.Logger
+	client      valkeygo.Client
+	reader      repository.URLReader
+	writer      repository.URLWriter
 }
 
 func NewURL(
+	ttlURLCache time.Duration,
 	logger *slog.Logger,
 	client valkeygo.Client,
 	reader repository.URLReader,
 	writer repository.URLWriter,
 ) *URL {
 	return &URL{
-		logger: logger,
-		client: client,
-		reader: reader,
-		writer: writer,
+		ttlURLCache: ttlURLCache,
+		logger:      logger,
+		client:      client,
+		reader:      reader,
+		writer:      writer,
 	}
 }
 
@@ -94,7 +93,7 @@ func (u *URL) addToCache(ctx context.Context, url *model.URL) error {
 		Set().
 		Key(key).
 		Value(string(data)).
-		Ex(URLCacheDuration).
+		Ex(u.ttlURLCache).
 		Build()
 	return u.client.Do(ctx, cmd).Error()
 }
