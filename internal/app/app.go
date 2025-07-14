@@ -17,17 +17,19 @@ import (
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
+type component struct {
+	key     string
+	needs   []string
+	builder func() any
+}
+
 func Setup(logger *slog.Logger) error {
 	simpledi.Register("logger", nil, func() any {
 		return logger
 	})
-
-	setupUtils()
-	setupRepository()
-	setupService()
-	setupMiddleware()
-	setupHandler()
-
+	for _, c := range components() {
+		simpledi.Register(c.key, c.needs, c.builder)
+	}
 	err := simpledi.Resolve()
 	if err != nil {
 		return err
@@ -51,151 +53,145 @@ func MustSetup(logger *slog.Logger) {
 	}
 }
 
-func setupUtils() {
-	simpledi.Register(
-		"config",
-		[]string{"logger"},
-		func() any {
-			return config.MustNewConfig(
-				simpledi.Get("logger").(*slog.Logger),
-			)
+func components() []component {
+	return []component{
+		{
+			"config",
+			[]string{"logger"},
+			func() any {
+				return config.MustNewConfig(
+					simpledi.Get("logger").(*slog.Logger),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"postgres",
-		[]string{"logger", "config"},
-		func() any {
-			return utilspostgres.MustNewPostgresDB(
-				simpledi.Get("logger").(*slog.Logger),
-				simpledi.Get("config").(*config.Config).Postgres.URL,
-			)
+		{
+			"postgres",
+			[]string{"logger", "config"},
+			func() any {
+				return utilspostgres.MustNewPostgresDB(
+					simpledi.Get("logger").(*slog.Logger),
+					simpledi.Get("config").(*config.Config).Postgres.URL,
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"valkey",
-		[]string{"logger", "config"},
-		func() any {
-			return utilsvalkey.MustNewValkeyClient(
-				simpledi.Get("logger").(*slog.Logger),
-				simpledi.Get("config").(*config.Config).Valkey.URL,
-			)
+		{
+			"valkey",
+			[]string{"logger", "config"},
+			func() any {
+				return utilsvalkey.MustNewValkeyClient(
+					simpledi.Get("logger").(*slog.Logger),
+					simpledi.Get("config").(*config.Config).Valkey.URL,
+				)
+			},
 		},
-	)
-}
-
-func setupRepository() {
-	simpledi.Register(
-		"url_postgres_repository",
-		[]string{"postgres"},
-		func() any {
-			return repositorypostgres.NewURL(
-				simpledi.Get("postgres").(*sqlx.DB),
-			)
+		// repository
+		{
+			"url_postgres_repository",
+			[]string{"postgres"},
+			func() any {
+				return repositorypostgres.NewURL(
+					simpledi.Get("postgres").(*sqlx.DB),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"click_postgres_repository",
-		[]string{"postgres"},
-		func() any {
-			return repositorypostgres.NewClick(
-				simpledi.Get("postgres").(*sqlx.DB),
-			)
+		{
+			"click_postgres_repository",
+			[]string{"postgres"},
+			func() any {
+				return repositorypostgres.NewClick(
+					simpledi.Get("postgres").(*sqlx.DB),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"url_valkey_repository",
-		[]string{"logger", "valkey", "url_postgres_repository"},
-		func() any {
-			return repositoryvalkey.NewURL(
-				simpledi.Get("logger").(*slog.Logger),
-				simpledi.Get("valkey").(valkeygo.Client),
-				simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
-			)
+		{
+			"url_valkey_repository",
+			[]string{"logger", "valkey", "url_postgres_repository"},
+			func() any {
+				return repositoryvalkey.NewURL(
+					simpledi.Get("logger").(*slog.Logger),
+					simpledi.Get("valkey").(valkeygo.Client),
+					simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
+				)
+			},
 		},
-	)
-}
-
-func setupService() {
-	simpledi.Register(
-		"url_service",
-		[]string{"logger", "url_valkey_repository", "click_postgres_repository"},
-		func() any {
-			return service.NewURL(
-				simpledi.Get("logger").(*slog.Logger),
-				simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
-				simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
-			)
+		// service
+		{
+			"url_service",
+			[]string{"logger", "url_valkey_repository", "click_postgres_repository"},
+			func() any {
+				return service.NewURL(
+					simpledi.Get("logger").(*slog.Logger),
+					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
+					simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"ip_service",
-		nil,
-		func() any {
-			return service.NewIP()
+		{
+			"ip_service",
+			nil,
+			func() any {
+				return service.NewIP()
+			},
 		},
-	)
-	simpledi.Register(
-		"click_service",
-		[]string{"click_postgres_repository"},
-		func() any {
-			return service.NewClick(
-				simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
-			)
+		{
+			"click_service",
+			[]string{"click_postgres_repository"},
+			func() any {
+				return service.NewClick(
+					simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
+				)
+			},
 		},
-	)
-}
-
-func setupMiddleware() {
-	simpledi.Register(
-		"rate_limiter_middleware",
-		[]string{"ip_service"},
-		func() any {
-			return middleware.NewRateLimiter(
-				simpledi.Get("ip_service").(*service.IP),
-			)
+		// middleware
+		{
+			"rate_limiter_middleware",
+			[]string{"ip_service"},
+			func() any {
+				return middleware.NewRateLimiter(
+					simpledi.Get("ip_service").(*service.IP),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"logger_middleware",
-		[]string{"logger", "ip_service"},
-		func() any {
-			return middleware.NewLogger(
-				simpledi.Get("logger").(*slog.Logger),
-				simpledi.Get("ip_service").(*service.IP),
-			)
+		{
+			"logger_middleware",
+			[]string{"logger", "ip_service"},
+			func() any {
+				return middleware.NewLogger(
+					simpledi.Get("logger").(*slog.Logger),
+					simpledi.Get("ip_service").(*service.IP),
+				)
+			},
 		},
-	)
-}
-
-func setupHandler() {
-	simpledi.Register(
-		"handler",
-		[]string{"logger"},
-		func() any {
-			return handler.New(
-				simpledi.Get("logger").(*slog.Logger),
-			)
+		// handler
+		{
+			"handler",
+			[]string{"logger"},
+			func() any {
+				return handler.New(
+					simpledi.Get("logger").(*slog.Logger),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"url_handler",
-		[]string{"handler", "url_service", "ip_service"},
-		func() any {
-			return handler.NewURL(
-				simpledi.Get("handler").(*handler.Handler),
-				simpledi.Get("url_service").(*service.URL),
-				simpledi.Get("ip_service").(*service.IP),
-			)
+		{
+			"url_handler",
+			[]string{"handler", "url_service", "ip_service"},
+			func() any {
+				return handler.NewURL(
+					simpledi.Get("handler").(*handler.Handler),
+					simpledi.Get("url_service").(*service.URL),
+					simpledi.Get("ip_service").(*service.IP),
+				)
+			},
 		},
-	)
-	simpledi.Register(
-		"click_handler",
-		[]string{"handler", "click_service"},
-		func() any {
-			return handler.NewClick(
-				simpledi.Get("handler").(*handler.Handler),
-				simpledi.Get("click_service").(*service.Click),
-			)
+		{
+			"click_handler",
+			[]string{"handler", "click_service"},
+			func() any {
+				return handler.NewClick(
+					simpledi.Get("handler").(*handler.Handler),
+					simpledi.Get("click_service").(*service.Click),
+				)
+			},
 		},
-	)
+	}
 }
