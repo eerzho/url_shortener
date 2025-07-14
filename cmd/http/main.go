@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 	_ "url_shortener/docs"
 	"url_shortener/internal/app"
 	"url_shortener/internal/config"
@@ -16,13 +15,6 @@ import (
 
 	"github.com/eerzho/simpledi"
 	swagger "github.com/swaggo/http-swagger"
-)
-
-const (
-	DefaultReadTimeout    = 10 * time.Second
-	DefaultWriteTimeout   = 10 * time.Second
-	DefaultIdleTimeout    = 60 * time.Second
-	DefaultRequestTimeout = 30 * time.Second
 )
 
 // main godoc
@@ -41,12 +33,13 @@ func main() {
 
 	handler.Setup(mux)
 
+	cfg := simpledi.Get("config").(*config.Config)
 	server := &http.Server{
-		Addr:         ":" + simpledi.Get("config").(*config.Config).HTTP.Port,
 		Handler:      mux,
-		ReadTimeout:  DefaultReadTimeout,
-		WriteTimeout: DefaultWriteTimeout,
-		IdleTimeout:  DefaultIdleTimeout,
+		Addr:         ":" + cfg.HTTP.Port,
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
+		IdleTimeout:  cfg.HTTP.IdleTimeout,
 	}
 
 	go func() {
@@ -63,7 +56,7 @@ func main() {
 
 	logger.Info("shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), DefaultRequestTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ReadTimeout)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {

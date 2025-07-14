@@ -3,6 +3,7 @@ package config
 import (
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -20,7 +21,11 @@ type (
 	}
 
 	HTTP struct {
-		Port string `env:"HTTP_PORT,required"`
+		Port           string        `env:"HTTP_PORT,required"`
+		ReadTimeout    time.Duration `env:"HTTP_READ_TIMEOUT" envDefault:"10s"`
+		WriteTimeout   time.Duration `env:"HTTP_WRITE_TIMEOUT" envDefault:"10s"`
+		IdleTimeout    time.Duration `env:"HTTP_IDLE_TIMEOUT" envDefault:"60s"`
+		RequestTimeout time.Duration `env:"HTTP_REQUEST_TIMEOUT" envDefault:"30s"`
 	}
 
 	Postgres struct {
