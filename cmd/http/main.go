@@ -25,7 +25,7 @@ import (
 func main() {
 	logger := utilslogger.NewLogger(os.Getenv("APP_ENV"))
 
-	app.MustSetup(logger)
+	app.Setup(logger)
 	defer app.Close(logger)
 
 	mux := http.NewServeMux()
@@ -33,7 +33,7 @@ func main() {
 
 	handler.Setup(mux)
 
-	cfg := simpledi.Get("config").(*config.Config)
+	cfg := simpledi.MustGetAs[*config.Config]("config")
 	server := &http.Server{
 		Handler:      mux,
 		Addr:         ":" + cfg.HTTP.Port,

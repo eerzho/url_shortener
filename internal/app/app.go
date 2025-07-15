@@ -2,15 +2,14 @@ package app
 
 import (
 	"log/slog"
-	"os"
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
 	"url_shortener/internal/handler/middleware"
-	repositorypostgres "url_shortener/internal/repository/postgres"
-	repositoryvalkey "url_shortener/internal/repository/valkey"
+	postgresrepo "url_shortener/internal/repository/postgres"
+	valkeyrepo "url_shortener/internal/repository/valkey"
 	"url_shortener/internal/service"
-	utilspostgres "url_shortener/internal/utils/postgres"
-	utilsvalkey "url_shortener/internal/utils/valkey"
+	postgresutils "url_shortener/internal/utils/postgres"
+	valkeyutils "url_shortener/internal/utils/valkey"
 
 	"github.com/eerzho/simpledi"
 	"github.com/jmoiron/sqlx"
@@ -23,34 +22,24 @@ type component struct {
 	builder func() any
 }
 
-func Setup(logger *slog.Logger) error {
+func Setup(logger *slog.Logger) {
 	simpledi.Register("logger", nil, func() any {
 		return logger
 	})
+
 	for _, c := range components() {
 		simpledi.Register(c.key, c.needs, c.builder)
 	}
-	err := simpledi.Resolve()
-	if err != nil {
-		return err
-	}
-	return nil
+
+	simpledi.MustResolve()
 }
 
 func Close(logger *slog.Logger) {
-	if err := simpledi.Get("postgres").(*sqlx.DB).Close(); err != nil {
+	if err := simpledi.MustGetAs[*sqlx.DB]("postgres").Close(); err != nil {
 		logger.Error("failed to close postgres", slog.Any("error", err))
 	}
-	simpledi.Get("valkey").(valkeygo.Client).Close()
-	simpledi.Get("url_service").(*service.URL).Close()
-}
-
-func MustSetup(logger *slog.Logger) {
-	err := Setup(logger)
-	if err != nil {
-		logger.Error("failed to setup app", slog.Any("error", err))
-		os.Exit(1)
-	}
+	simpledi.MustGetAs[valkeygo.Client]("valkey").Close()
+	simpledi.MustGetAs[*service.URL]("url_service").Close()
 }
 
 func components() []component {
@@ -60,7 +49,7 @@ func components() []component {
 			[]string{"logger"},
 			func() any {
 				return config.MustNewConfig(
-					simpledi.Get("logger").(*slog.Logger),
+					simpledi.MustGetAs[*slog.Logger]("logger"),
 				)
 			},
 		},
@@ -68,12 +57,13 @@ func components() []component {
 			"postgres",
 			[]string{"logger", "config"},
 			func() any {
-				return utilspostgres.MustNewPostgresDB(
-					simpledi.Get("logger").(*slog.Logger),
-					simpledi.Get("config").(*config.Config).Postgres.URL,
-					simpledi.Get("config").(*config.Config).Postgres.MaxOpenConns,
-					simpledi.Get("config").(*config.Config).Postgres.MaxIdleConns,
-					simpledi.Get("config").(*config.Config).Postgres.ConnMaxLifetime,
+				cfg := simpledi.MustGetAs[*config.Config]("config")
+				return postgresutils.MustNewPostgresDB(
+					simpledi.MustGetAs[*slog.Logger]("logger"),
+					cfg.Postgres.URL,
+					cfg.Postgres.MaxOpenConns,
+					cfg.Postgres.MaxIdleConns,
+					cfg.Postgres.ConnMaxLifetime,
 				)
 			},
 		},
@@ -81,9 +71,9 @@ func components() []component {
 			"valkey",
 			[]string{"logger", "config"},
 			func() any {
-				return utilsvalkey.MustNewValkeyClient(
-					simpledi.Get("logger").(*slog.Logger),
-					simpledi.Get("config").(*config.Config).Valkey.URL,
+				return valkeyutils.MustNewValkeyClient(
+					simpledi.MustGetAs[*slog.Logger]("logger"),
+					simpledi.MustGetAs[*config.Config]("config").Valkey.URL,
 				)
 			},
 		},
@@ -92,8 +82,8 @@ func components() []component {
 			"url_postgres_repository",
 			[]string{"postgres"},
 			func() any {
-				return repositorypostgres.NewURL(
-					simpledi.Get("postgres").(*sqlx.DB),
+				return postgresrepo.NewURL(
+					simpledi.MustGetAs[*sqlx.DB]("postgres"),
 				)
 			},
 		},
@@ -101,8 +91,8 @@ func components() []component {
 			"click_postgres_repository",
 			[]string{"postgres"},
 			func() any {
-				return repositorypostgres.NewClick(
-					simpledi.Get("postgres").(*sqlx.DB),
+				return postgresrepo.NewClick(
+					simpledi.MustGetAs[*sqlx.DB]("postgres"),
 				)
 			},
 		},
@@ -110,12 +100,13 @@ func components() []component {
 			"url_valkey_repository",
 			[]string{"config", "logger", "valkey", "url_postgres_repository"},
 			func() any {
-				return repositoryvalkey.NewURL(
-					simpledi.Get("config").(*config.Config).TTL.URLCache,
-					simpledi.Get("logger").(*slog.Logger),
-					simpledi.Get("valkey").(valkeygo.Client),
-					simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
-					simpledi.Get("url_postgres_repository").(*repositorypostgres.URL),
+				urlRepo := simpledi.MustGetAs[*postgresrepo.URL]("url_postgres_repository")
+				return valkeyrepo.NewURL(
+					simpledi.MustGetAs[*config.Config]("config").TTL.URLCache,
+					simpledi.MustGetAs[*slog.Logger]("logger"),
+					simpledi.MustGetAs[valkeygo.Client]("valkey"),
+					urlRepo,
+					urlRepo,
 				)
 			},
 		},
@@ -124,13 +115,15 @@ func components() []component {
 			"url_service",
 			[]string{"config", "logger", "url_valkey_repository", "click_postgres_repository"},
 			func() any {
+				cfg := simpledi.MustGetAs[*config.Config]("config")
+				urlRepo := simpledi.MustGetAs[*valkeyrepo.URL]("url_valkey_repository")
 				return service.NewURL(
-					simpledi.Get("config").(*config.Config).WorkerPool.URLCount,
-					simpledi.Get("config").(*config.Config).WorkerPool.URLBufferSize,
-					simpledi.Get("logger").(*slog.Logger),
-					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
-					simpledi.Get("url_valkey_repository").(*repositoryvalkey.URL),
-					simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
+					cfg.WorkerPool.URLCount,
+					cfg.WorkerPool.URLBufferSize,
+					simpledi.MustGetAs[*slog.Logger]("logger"),
+					urlRepo,
+					urlRepo,
+					simpledi.MustGetAs[*postgresrepo.Click]("click_postgres_repository"),
 				)
 			},
 		},
@@ -145,11 +138,12 @@ func components() []component {
 			"click_service",
 			[]string{"config", "click_postgres_repository"},
 			func() any {
+				cfg := simpledi.MustGetAs[*config.Config]("config")
 				return service.NewClick(
-					simpledi.Get("config").(*config.Config).Pagination.MinPage,
-					simpledi.Get("config").(*config.Config).Pagination.MinSize,
-					simpledi.Get("config").(*config.Config).Pagination.MaxSize,
-					simpledi.Get("click_postgres_repository").(*repositorypostgres.Click),
+					cfg.Pagination.MinPage,
+					cfg.Pagination.MinSize,
+					cfg.Pagination.MaxSize,
+					simpledi.MustGetAs[*postgresrepo.Click]("click_postgres_repository"),
 				)
 			},
 		},
@@ -158,11 +152,12 @@ func components() []component {
 			"rate_limiter_middleware",
 			[]string{"config", "ip_service"},
 			func() any {
+				cfg := simpledi.MustGetAs[*config.Config]("config")
 				return middleware.NewRateLimiter(
-					simpledi.Get("config").(*config.Config).RateLimit.RPS,
-					simpledi.Get("config").(*config.Config).RateLimit.Burst,
-					simpledi.Get("config").(*config.Config).RateLimit.CacheCapacity,
-					simpledi.Get("ip_service").(*service.IP),
+					cfg.RateLimit.RPS,
+					cfg.RateLimit.Burst,
+					cfg.RateLimit.CacheCapacity,
+					simpledi.MustGetAs[*service.IP]("ip_service"),
 				)
 			},
 		},
@@ -171,8 +166,8 @@ func components() []component {
 			[]string{"logger", "ip_service"},
 			func() any {
 				return middleware.NewLogger(
-					simpledi.Get("logger").(*slog.Logger),
-					simpledi.Get("ip_service").(*service.IP),
+					simpledi.MustGetAs[*slog.Logger]("logger"),
+					simpledi.MustGetAs[*service.IP]("ip_service"),
 				)
 			},
 		},
@@ -182,7 +177,7 @@ func components() []component {
 			[]string{"logger"},
 			func() any {
 				return handler.New(
-					simpledi.Get("logger").(*slog.Logger),
+					simpledi.MustGetAs[*slog.Logger]("logger"),
 				)
 			},
 		},
@@ -191,9 +186,9 @@ func components() []component {
 			[]string{"handler", "url_service", "ip_service"},
 			func() any {
 				return handler.NewURL(
-					simpledi.Get("handler").(*handler.Handler),
-					simpledi.Get("url_service").(*service.URL),
-					simpledi.Get("ip_service").(*service.IP),
+					simpledi.MustGetAs[*handler.Handler]("handler"),
+					simpledi.MustGetAs[*service.URL]("url_service"),
+					simpledi.MustGetAs[*service.IP]("ip_service"),
 				)
 			},
 		},
@@ -202,8 +197,8 @@ func components() []component {
 			[]string{"handler", "click_service"},
 			func() any {
 				return handler.NewClick(
-					simpledi.Get("handler").(*handler.Handler),
-					simpledi.Get("click_service").(*service.Click),
+					simpledi.MustGetAs[*handler.Handler]("handler"),
+					simpledi.MustGetAs[*service.Click]("click_service"),
 				)
 			},
 		},
