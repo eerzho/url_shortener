@@ -23,7 +23,7 @@ type (
 	}
 
 	HTTP struct {
-		Port           string        `env:"HTTP_PORT" envDefault:"8080"`
+		Port           string        `env:"HTTP_PORT"            envDefault:"8080"`
 		ReadTimeout    time.Duration `env:"HTTP_READ_TIMEOUT"    envDefault:"10s"`
 		WriteTimeout   time.Duration `env:"HTTP_WRITE_TIMEOUT"   envDefault:"10s"`
 		IdleTimeout    time.Duration `env:"HTTP_IDLE_TIMEOUT"    envDefault:"60s"`
