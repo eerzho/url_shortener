@@ -1,4 +1,4 @@
-# URL Shortener REST API
+# URL Shortener
 
 A URL shortener service built with Go as a template and learning project.
 
@@ -15,9 +15,9 @@ A URL shortener service built with Go as a template and learning project.
    make up
    ```
 
-The API will be available at `http://localhost:8082`
+The API will be available at `http://localhost:8080`
 
-Swagger documentation: `http://localhost:8082/swagger/`
+Swagger documentation: `http://localhost:8080/swagger/index.html`
 
 ### In-Memory LRU Cache for Rate Limiting
 In a real production environment with multiple pods, rate limiting should either use external storage to synchronize limits across instances, or be handled at the infrastructure level
