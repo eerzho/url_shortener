@@ -2,16 +2,6 @@
 
 A URL shortener service built with Go as a template and learning project.
 
-## Features
-
-- URL shortening with collision-resistant short codes
-- Click tracking and analytics
-- Rate limiting with LRU cache
-- Asynchronous click processing with worker pool
-- Valkey caching for URL lookups
-- PostgreSQL for persistent storage
-- Swagger documentation
-
 ## Quick Start
 
 1. Clone the repository
