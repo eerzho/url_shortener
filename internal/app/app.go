@@ -46,20 +46,17 @@ func components() []component {
 	return []component{
 		{
 			"config",
-			[]string{"logger"},
+			nil,
 			func() any {
-				return config.MustNewConfig(
-					simpledi.MustGetAs[*slog.Logger]("logger"),
-				)
+				return config.MustNewConfig()
 			},
 		},
 		{
 			"postgres",
-			[]string{"logger", "config"},
+			[]string{"config"},
 			func() any {
 				cfg := simpledi.MustGetAs[*config.Config]("config")
 				return postgresutils.MustNewPostgresDB(
-					simpledi.MustGetAs[*slog.Logger]("logger"),
 					cfg.Postgres.URL,
 					cfg.Postgres.MaxOpenConns,
 					cfg.Postgres.MaxIdleConns,
@@ -69,10 +66,9 @@ func components() []component {
 		},
 		{
 			"valkey",
-			[]string{"logger", "config"},
+			[]string{"config"},
 			func() any {
 				return valkeyutils.MustNewValkeyClient(
-					simpledi.MustGetAs[*slog.Logger]("logger"),
 					simpledi.MustGetAs[*config.Config]("config").Valkey.URL,
 				)
 			},
