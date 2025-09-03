@@ -5,196 +5,217 @@ import (
 	"url_shortener/internal/config"
 	"url_shortener/internal/handler"
 	"url_shortener/internal/handler/middleware"
-	postgresrepo "url_shortener/internal/repository/postgres"
-	valkeyrepo "url_shortener/internal/repository/valkey"
+	postgresRepo "url_shortener/internal/repository/postgres"
+	valkeyRepo "url_shortener/internal/repository/valkey"
 	"url_shortener/internal/service"
-	postgresutils "url_shortener/internal/utils/postgres"
-	valkeyutils "url_shortener/internal/utils/valkey"
+	postgresUtils "url_shortener/internal/utils/postgres"
+	valkeyUtils "url_shortener/internal/utils/valkey"
 
 	"github.com/eerzho/simpledi"
 	"github.com/jmoiron/sqlx"
 	valkeygo "github.com/valkey-io/valkey-go"
 )
 
-type component struct {
-	key     string
-	needs   []string
-	builder func() any
-}
-
 func Setup(logger *slog.Logger) {
-	simpledi.Register("logger", nil, func() any {
-		return logger
+	simpledi.MustRegister(simpledi.Def{
+		Key: "logger",
+		Ctor: func() any {
+			return logger
+		},
 	})
 
-	for _, c := range components() {
-		simpledi.Register(c.key, c.needs, c.builder)
+	for _, def := range defs() {
+		simpledi.MustRegister(def)
 	}
 
 	simpledi.MustResolve()
 }
 
 func Close(logger *slog.Logger) {
-	if err := simpledi.MustGetAs[*sqlx.DB]("postgres").Close(); err != nil {
-		logger.Error("failed to close postgres", slog.Any("error", err))
+	if err := simpledi.Reset(); err != nil {
+		logger.Error("failed to reset container", slog.Any("error", err))
 	}
-	simpledi.MustGetAs[valkeygo.Client]("valkey").Close()
-	simpledi.MustGetAs[*service.URL]("url_service").Close()
 }
 
-func components() []component {
-	return []component{
+func defs() []simpledi.Def {
+	return []simpledi.Def{
 		{
-			"config",
-			nil,
-			func() any {
+			Key: "config",
+			Ctor: func() any {
 				return config.MustNewConfig()
 			},
 		},
 		{
-			"postgres",
-			[]string{"config"},
-			func() any {
+			Key:  "postgres",
+			Deps: []string{"config"},
+			Ctor: func() any {
 				cfg := simpledi.MustGetAs[*config.Config]("config")
-				return postgresutils.MustNewPostgresDB(
+				return postgresUtils.MustNewPostgresDB(
 					cfg.Postgres.URL,
 					cfg.Postgres.MaxOpenConns,
 					cfg.Postgres.MaxIdleConns,
 					cfg.Postgres.ConnMaxLifetime,
 				)
 			},
-		},
-		{
-			"valkey",
-			[]string{"config"},
-			func() any {
-				return valkeyutils.MustNewValkeyClient(
-					simpledi.MustGetAs[*config.Config]("config").Valkey.URL,
-				)
-			},
-		},
-		// repository
-		{
-			"url_postgres_repository",
-			[]string{"postgres"},
-			func() any {
-				return postgresrepo.NewURL(
-					simpledi.MustGetAs[*sqlx.DB]("postgres"),
-				)
+			Dtor: func() error {
+				db := simpledi.MustGetAs[*sqlx.DB]("postgres")
+				return db.Close()
 			},
 		},
 		{
-			"click_postgres_repository",
-			[]string{"postgres"},
-			func() any {
-				return postgresrepo.NewClick(
-					simpledi.MustGetAs[*sqlx.DB]("postgres"),
-				)
-			},
-		},
-		{
-			"url_valkey_repository",
-			[]string{"config", "logger", "valkey", "url_postgres_repository"},
-			func() any {
-				urlRepo := simpledi.MustGetAs[*postgresrepo.URL]("url_postgres_repository")
-				return valkeyrepo.NewURL(
-					simpledi.MustGetAs[*config.Config]("config").TTL.URLCache,
-					simpledi.MustGetAs[*slog.Logger]("logger"),
-					simpledi.MustGetAs[valkeygo.Client]("valkey"),
-					urlRepo,
-					urlRepo,
-				)
-			},
-		},
-		// service
-		{
-			"url_service",
-			[]string{"config", "logger", "url_valkey_repository", "click_postgres_repository"},
-			func() any {
+			Key:  "valkey",
+			Deps: []string{"config"},
+			Ctor: func() any {
 				cfg := simpledi.MustGetAs[*config.Config]("config")
-				urlRepo := simpledi.MustGetAs[*valkeyrepo.URL]("url_valkey_repository")
+				return valkeyUtils.MustNewValkeyClient(
+					cfg.Valkey.URL,
+				)
+			},
+			Dtor: func() error {
+				client := simpledi.MustGetAs[valkeygo.Client]("valkey")
+				client.Close()
+				return nil
+			},
+		},
+		{
+			Key:  "urlPostgresRepo",
+			Deps: []string{"postgres"},
+			Ctor: func() any {
+				db := simpledi.MustGetAs[*sqlx.DB]("postgres")
+				return postgresRepo.NewURL(
+					db,
+				)
+			},
+		},
+		{
+			Key:  "clickPostgresRepo",
+			Deps: []string{"postgres"},
+			Ctor: func() any {
+				db := simpledi.MustGetAs[*sqlx.DB]("postgres")
+				return postgresRepo.NewClick(
+					db,
+				)
+			},
+		},
+		{
+			Key:  "urlValkeyRepo",
+			Deps: []string{"config", "logger", "valkey", "urlPostgresRepo"},
+			Ctor: func() any {
+				cfg := simpledi.MustGetAs[*config.Config]("config")
+				logger := simpledi.MustGetAs[*slog.Logger]("logger")
+				client := simpledi.MustGetAs[valkeygo.Client]("valkey")
+				urlRepo := simpledi.MustGetAs[*postgresRepo.URL]("urlPostgresRepo")
+				return valkeyRepo.NewURL(
+					cfg.TTL.URLCache,
+					logger,
+					client,
+					urlRepo,
+					urlRepo,
+				)
+			},
+		},
+		{
+			Key:  "urlService",
+			Deps: []string{"config", "logger", "urlValkeyRepo", "clickPostgresRepo"},
+			Ctor: func() any {
+				cfg := simpledi.MustGetAs[*config.Config]("config")
+				logger := simpledi.MustGetAs[*slog.Logger]("logger")
+				urlRepo := simpledi.MustGetAs[*valkeyRepo.URL]("urlValkeyRepo")
+				clickRepo := simpledi.MustGetAs[*postgresRepo.Click]("clickPostgresRepo")
 				return service.NewURL(
 					cfg.WorkerPool.URLCount,
 					cfg.WorkerPool.URLBufferSize,
-					simpledi.MustGetAs[*slog.Logger]("logger"),
+					logger,
 					urlRepo,
 					urlRepo,
-					simpledi.MustGetAs[*postgresrepo.Click]("click_postgres_repository"),
+					clickRepo,
 				)
+			},
+			Dtor: func() error {
+				urlService := simpledi.MustGetAs[*service.URL]("urlService")
+				urlService.Close()
+				return nil
 			},
 		},
 		{
-			"ip_service",
-			nil,
-			func() any {
+			Key: "ipService",
+			Ctor: func() any {
 				return service.NewIP()
 			},
 		},
 		{
-			"click_service",
-			[]string{"config", "click_postgres_repository"},
-			func() any {
+			Key:  "clickService",
+			Deps: []string{"config", "clickPostgresRepo"},
+			Ctor: func() any {
 				cfg := simpledi.MustGetAs[*config.Config]("config")
+				clickRepo := simpledi.MustGetAs[*postgresRepo.Click]("clickPostgresRepo")
 				return service.NewClick(
 					cfg.Pagination.MinPage,
 					cfg.Pagination.MinSize,
 					cfg.Pagination.MaxSize,
-					simpledi.MustGetAs[*postgresrepo.Click]("click_postgres_repository"),
+					clickRepo,
 				)
 			},
 		},
-		// middleware
 		{
-			"rate_limiter_middleware",
-			[]string{"config", "ip_service"},
-			func() any {
+			Key:  "rateLimiterMiddleware",
+			Deps: []string{"config", "ipService"},
+			Ctor: func() any {
 				cfg := simpledi.MustGetAs[*config.Config]("config")
+				ipService := simpledi.MustGetAs[*service.IP]("ipService")
 				return middleware.NewRateLimiter(
 					cfg.RateLimit.RPS,
 					cfg.RateLimit.Burst,
 					cfg.RateLimit.CacheCapacity,
-					simpledi.MustGetAs[*service.IP]("ip_service"),
+					ipService,
 				)
 			},
 		},
 		{
-			"logger_middleware",
-			[]string{"logger", "ip_service"},
-			func() any {
+			Key:  "loggerMiddleware",
+			Deps: []string{"logger", "ipService"},
+			Ctor: func() any {
+				logger := simpledi.MustGetAs[*slog.Logger]("logger")
+				ipService := simpledi.MustGetAs[*service.IP]("ipService")
 				return middleware.NewLogger(
-					simpledi.MustGetAs[*slog.Logger]("logger"),
-					simpledi.MustGetAs[*service.IP]("ip_service"),
+					logger,
+					ipService,
 				)
 			},
 		},
-		// handler
 		{
-			"handler",
-			[]string{"logger"},
-			func() any {
+			Key:  "handler",
+			Deps: []string{"logger"},
+			Ctor: func() any {
+				logger := simpledi.MustGetAs[*slog.Logger]("logger")
 				return handler.New(
-					simpledi.MustGetAs[*slog.Logger]("logger"),
+					logger,
 				)
 			},
 		},
 		{
-			"url_handler",
-			[]string{"handler", "url_service", "ip_service"},
-			func() any {
+			Key:  "urlHandler",
+			Deps: []string{"handler", "urlService", "ipService"},
+			Ctor: func() any {
+				baseHandler := simpledi.MustGetAs[*handler.Handler]("handler")
+				urlService := simpledi.MustGetAs[*service.URL]("urlService")
+				ipService := simpledi.MustGetAs[*service.IP]("ipService")
 				return handler.NewURL(
-					simpledi.MustGetAs[*handler.Handler]("handler"),
-					simpledi.MustGetAs[*service.URL]("url_service"),
-					simpledi.MustGetAs[*service.IP]("ip_service"),
+					baseHandler,
+					urlService,
+					ipService,
 				)
 			},
 		},
 		{
-			"click_handler",
-			[]string{"handler", "click_service"},
-			func() any {
+			Key:  "clickHandler",
+			Deps: []string{"handler", "clickService"},
+			Ctor: func() any {
+				baseHandler := simpledi.MustGetAs[*handler.Handler]("handler")
+				clickService := simpledi.MustGetAs[*service.Click]("clickService")
 				return handler.NewClick(
-					simpledi.MustGetAs[*handler.Handler]("handler"),
-					simpledi.MustGetAs[*service.Click]("click_service"),
+					baseHandler,
+					clickService,
 				)
 			},
 		},

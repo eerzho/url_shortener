@@ -123,10 +123,10 @@ func (h *Handler) mapErrToStatus(err error) int {
 }
 
 func Setup(mux *http.ServeMux) {
-	rateLimiterMiddleware := simpledi.MustGetAs[*middleware.RateLimiter]("rate_limiter_middleware")
-	loggerMiddleware := simpledi.MustGetAs[*middleware.Logger]("logger_middleware")
-	urlHandler := simpledi.MustGetAs[*URL]("url_handler")
-	clickHandler := simpledi.MustGetAs[*Click]("click_handler")
+	rateLimiterMiddleware := simpledi.MustGetAs[*middleware.RateLimiter]("rateLimiterMiddleware")
+	loggerMiddleware := simpledi.MustGetAs[*middleware.Logger]("loggerMiddleware")
+	urlHandler := simpledi.MustGetAs[*URL]("urlHandler")
+	clickHandler := simpledi.MustGetAs[*Click]("clickHandler")
 
 	mux.Handle("POST /urls", middleware.ChainFunc(
 		urlHandler.Create,

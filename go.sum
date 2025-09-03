@@ -6,8 +6,8 @@ github.com/caarlos0/env/v11 v11.3.1 h1:cArPWC15hWmEt+gWk7YBi7lEXTXCvpaSdCiZE2X5m
 github.com/caarlos0/env/v11 v11.3.1/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/eerzho/simpledi v1.1.0 h1:xlCrzBL6eTD8+wAxSyXs4toDeFGq9QOvoPZBHIK9lXQ=
-github.com/eerzho/simpledi v1.1.0/go.mod h1:TL+UBSPYV46kzhUrKGiGXyWylXQnGc8IJIBV60JM7ms=
+github.com/eerzho/simpledi v1.2.0 h1:K9dXciNAEO9vhD+AMmIQ+myBkkRW4Xd+P6BiRNF7P5U=
+github.com/eerzho/simpledi v1.2.0/go.mod h1:iE44EH/lL8oJ6KlPGTF2n05kVlpwB2vscC7axCufugo=
 github.com/gabriel-vasile/mimetype v1.4.9 h1:5k+WDwEsD9eTLL8Tz3L0VnmVh9QxGjRmjBvAG7U/oYY=
 github.com/gabriel-vasile/mimetype v1.4.9/go.mod h1:WnSQhFKJuBlRyLiKohA/2DtIlPFAbguNaG7QCHcyGok=
 github.com/go-openapi/jsonpointer v0.21.1 h1:whnzv/pNXtK2FbX/W9yJfRmE2gsmkfahjMKB0fZvcic=
