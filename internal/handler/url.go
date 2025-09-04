@@ -2,23 +2,20 @@ package handler
 
 import (
 	"net/http"
+	"url_shortener/internal/handler/helper"
 	"url_shortener/internal/handler/request"
 )
 
 type URL struct {
-	*Handler
-
 	urlService URLService
 	ipService  IPService
 }
 
 func NewURL(
-	handler *Handler,
 	urlService URLService,
 	ipService IPService,
 ) *URL {
 	return &URL{
-		Handler:    handler,
 		urlService: urlService,
 		ipService:  ipService,
 	}
@@ -37,9 +34,9 @@ func NewURL(
 //	@Router		/urls [post]
 func (u *URL) Create(w http.ResponseWriter, r *http.Request) {
 	var request request.CreateURL
-	err := u.parseJSON(&request, r.Body)
+	err := helper.ParseJSON(&request, r.Body)
 	if err != nil {
-		u.fail(w, err)
+		helper.Fail(w, err)
 		return
 	}
 	url, err := u.urlService.Create(
@@ -49,10 +46,10 @@ func (u *URL) Create(w http.ResponseWriter, r *http.Request) {
 		r.UserAgent(),
 	)
 	if err != nil {
-		u.fail(w, err)
+		helper.Fail(w, err)
 		return
 	}
-	u.ok(w, http.StatusCreated, url)
+	helper.OK(w, http.StatusCreated, url)
 }
 
 // Stats godoc
@@ -71,10 +68,10 @@ func (u *URL) Stats(w http.ResponseWriter, r *http.Request) {
 		r.PathValue("short_code"),
 	)
 	if err != nil {
-		u.fail(w, err)
+		helper.Fail(w, err)
 		return
 	}
-	u.ok(w, http.StatusOK, url)
+	helper.OK(w, http.StatusOK, url)
 }
 
 // Click godoc
@@ -94,7 +91,7 @@ func (u *URL) Click(w http.ResponseWriter, r *http.Request) {
 		r.UserAgent(),
 	)
 	if err != nil {
-		u.fail(w, err)
+		helper.Fail(w, err)
 		return
 	}
 	http.Redirect(w, r, url.LongURL, http.StatusFound)

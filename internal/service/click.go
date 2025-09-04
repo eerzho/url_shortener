@@ -8,23 +8,23 @@ import (
 )
 
 type Click struct {
-	minPage     int
-	minSize     int
-	maxSize     int
-	clickReader ClickReader
+	minPage         int
+	minSize         int
+	maxSize         int
+	clickRepository ClickRepository
 }
 
 func NewClick(
 	minPage int,
 	minSize int,
 	maxSize int,
-	clickReader ClickReader,
+	clickReader ClickRepository,
 ) *Click {
 	return &Click{
-		minPage:     minPage,
-		minSize:     minSize,
-		maxSize:     maxSize,
-		clickReader: clickReader,
+		minPage:         minPage,
+		minSize:         minSize,
+		maxSize:         maxSize,
+		clickRepository: clickReader,
 	}
 }
 
@@ -32,7 +32,7 @@ func (c *Click) GetList(ctx context.Context, shortCode string, page, size int) (
 	const op = "service.Click.GetList"
 	page = max(page, c.minPage)
 	size = min(max(size, c.minSize), c.maxSize)
-	list, total, err := c.clickReader.GetList(ctx, shortCode, page, size)
+	list, total, err := c.clickRepository.GetList(ctx, shortCode, page, size)
 	if err != nil {
 		return nil, nil, fmt.Errorf("%s: %w", op, err)
 	}

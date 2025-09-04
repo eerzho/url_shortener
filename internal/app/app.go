@@ -9,6 +9,7 @@ import (
 	valkeyRepo "url_shortener/internal/repository/valkey"
 	"url_shortener/internal/service"
 	postgresUtils "url_shortener/internal/utils/postgres"
+	validateUtils "url_shortener/internal/utils/validate"
 	valkeyUtils "url_shortener/internal/utils/valkey"
 
 	"github.com/eerzho/simpledi"
@@ -78,6 +79,12 @@ func defs() []simpledi.Def {
 			},
 		},
 		{
+			Key: "validate",
+			Ctor: func() any {
+				return validateUtils.NewValidate()
+			},
+		},
+		{
 			Key:  "urlPostgresRepo",
 			Deps: []string{"postgres"},
 			Ctor: func() any {
@@ -110,31 +117,19 @@ func defs() []simpledi.Def {
 					logger,
 					client,
 					urlRepo,
-					urlRepo,
 				)
 			},
 		},
 		{
 			Key:  "urlService",
-			Deps: []string{"config", "logger", "urlValkeyRepo", "clickPostgresRepo"},
+			Deps: []string{"urlValkeyRepo", "clickPostgresRepo"},
 			Ctor: func() any {
-				cfg := simpledi.MustGetAs[*config.Config]("config")
-				logger := simpledi.MustGetAs[*slog.Logger]("logger")
 				urlRepo := simpledi.MustGetAs[*valkeyRepo.URL]("urlValkeyRepo")
 				clickRepo := simpledi.MustGetAs[*postgresRepo.Click]("clickPostgresRepo")
 				return service.NewURL(
-					cfg.WorkerPool.URLCount,
-					cfg.WorkerPool.URLBufferSize,
-					logger,
-					urlRepo,
 					urlRepo,
 					clickRepo,
 				)
-			},
-			Dtor: func() error {
-				urlService := simpledi.MustGetAs[*service.URL]("urlService")
-				urlService.Close()
-				return nil
 			},
 		},
 		{
@@ -158,50 +153,22 @@ func defs() []simpledi.Def {
 			},
 		},
 		{
-			Key:  "rateLimiterMiddleware",
-			Deps: []string{"config", "ipService"},
-			Ctor: func() any {
-				cfg := simpledi.MustGetAs[*config.Config]("config")
-				ipService := simpledi.MustGetAs[*service.IP]("ipService")
-				return middleware.NewRateLimiter(
-					cfg.RateLimit.RPS,
-					cfg.RateLimit.Burst,
-					cfg.RateLimit.CacheCapacity,
-					ipService,
-				)
-			},
-		},
-		{
 			Key:  "loggerMiddleware",
 			Deps: []string{"logger", "ipService"},
 			Ctor: func() any {
 				logger := simpledi.MustGetAs[*slog.Logger]("logger")
-				ipService := simpledi.MustGetAs[*service.IP]("ipService")
 				return middleware.NewLogger(
-					logger,
-					ipService,
-				)
-			},
-		},
-		{
-			Key:  "handler",
-			Deps: []string{"logger"},
-			Ctor: func() any {
-				logger := simpledi.MustGetAs[*slog.Logger]("logger")
-				return handler.New(
 					logger,
 				)
 			},
 		},
 		{
 			Key:  "urlHandler",
-			Deps: []string{"handler", "urlService", "ipService"},
+			Deps: []string{"urlService", "ipService"},
 			Ctor: func() any {
-				baseHandler := simpledi.MustGetAs[*handler.Handler]("handler")
 				urlService := simpledi.MustGetAs[*service.URL]("urlService")
 				ipService := simpledi.MustGetAs[*service.IP]("ipService")
 				return handler.NewURL(
-					baseHandler,
 					urlService,
 					ipService,
 				)
@@ -209,12 +176,10 @@ func defs() []simpledi.Def {
 		},
 		{
 			Key:  "clickHandler",
-			Deps: []string{"handler", "clickService"},
+			Deps: []string{"clickService"},
 			Ctor: func() any {
-				baseHandler := simpledi.MustGetAs[*handler.Handler]("handler")
 				clickService := simpledi.MustGetAs[*service.Click]("clickService")
 				return handler.NewClick(
-					baseHandler,
 					clickService,
 				)
 			},

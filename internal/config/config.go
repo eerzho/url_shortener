@@ -12,10 +12,8 @@ type (
 		HTTP       HTTP
 		Postgres   Postgres
 		Valkey     Valkey
-		RateLimit  RateLimit
 		TTL        TTL
 		Pagination Pagination
-		WorkerPool WorkerPool
 	}
 
 	APP struct {
@@ -41,12 +39,6 @@ type (
 		URL string `env:"VALKEY_URL,required"`
 	}
 
-	RateLimit struct {
-		RPS           int `env:"RATE_LIMIT_RPS"            envDefault:"10"`
-		Burst         int `env:"RATE_LIMIT_BURST"          envDefault:"20"`
-		CacheCapacity int `env:"RATE_LIMIT_CACHE_CAPACITY" envDefault:"1000"`
-	}
-
 	TTL struct {
 		URLCache time.Duration `env:"TTL_URL_CACHE" envDefault:"24h"`
 	}
@@ -55,11 +47,6 @@ type (
 		MinPage int `env:"PAGINATION_MIN_PAGE" envDefault:"1"`
 		MinSize int `env:"PAGINATION_MIN_SIZE" envDefault:"5"`
 		MaxSize int `env:"PAGINATION_MAX_SIZE" envDefault:"200"`
-	}
-
-	WorkerPool struct {
-		URLCount      int `env:"WORKER_POOL_URL_COUNT"       envDefault:"10"`
-		URLBufferSize int `env:"WORKER_POOL_URL_BUFFER_SIZE" envDefault:"50000"`
 	}
 )
 

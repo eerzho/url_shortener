@@ -3,20 +3,17 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"url_shortener/internal/handler/helper"
 )
 
 type Click struct {
-	*Handler
-
 	clickService ClickService
 }
 
 func NewClick(
-	handler *Handler,
 	clickService ClickService,
 ) *Click {
 	return &Click{
-		Handler:      handler,
 		clickService: clickService,
 	}
 }
@@ -38,8 +35,8 @@ func (c *Click) List(w http.ResponseWriter, r *http.Request) {
 	size, _ := strconv.Atoi(r.URL.Query().Get("size"))
 	list, pagination, err := c.clickService.GetList(r.Context(), shortCode, page, size)
 	if err != nil {
-		c.fail(w, err)
+		helper.Fail(w, err)
 		return
 	}
-	c.list(w, list, pagination)
+	helper.List(w, list, pagination)
 }
