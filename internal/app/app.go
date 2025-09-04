@@ -3,11 +3,6 @@ package app
 import (
 	"log/slog"
 	"url_shortener/internal/config"
-	"url_shortener/internal/handler"
-	"url_shortener/internal/handler/middleware"
-	postgresRepo "url_shortener/internal/repository/postgres"
-	valkeyRepo "url_shortener/internal/repository/valkey"
-	"url_shortener/internal/service"
 	postgresUtils "url_shortener/internal/utils/postgres"
 	validateUtils "url_shortener/internal/utils/validate"
 	valkeyUtils "url_shortener/internal/utils/valkey"
@@ -32,7 +27,7 @@ func Setup(logger *slog.Logger) {
 	simpledi.MustResolve()
 }
 
-func Close(logger *slog.Logger) {
+func Reset(logger *slog.Logger) {
 	if err := simpledi.Reset(); err != nil {
 		logger.Error("failed to reset container", slog.Any("error", err))
 	}
@@ -82,106 +77,6 @@ func defs() []simpledi.Def {
 			Key: "validate",
 			Ctor: func() any {
 				return validateUtils.NewValidate()
-			},
-		},
-		{
-			Key:  "urlPostgresRepo",
-			Deps: []string{"postgres"},
-			Ctor: func() any {
-				db := simpledi.MustGetAs[*sqlx.DB]("postgres")
-				return postgresRepo.NewURL(
-					db,
-				)
-			},
-		},
-		{
-			Key:  "clickPostgresRepo",
-			Deps: []string{"postgres"},
-			Ctor: func() any {
-				db := simpledi.MustGetAs[*sqlx.DB]("postgres")
-				return postgresRepo.NewClick(
-					db,
-				)
-			},
-		},
-		{
-			Key:  "urlValkeyRepo",
-			Deps: []string{"config", "logger", "valkey", "urlPostgresRepo"},
-			Ctor: func() any {
-				cfg := simpledi.MustGetAs[*config.Config]("config")
-				logger := simpledi.MustGetAs[*slog.Logger]("logger")
-				client := simpledi.MustGetAs[valkeygo.Client]("valkey")
-				urlRepo := simpledi.MustGetAs[*postgresRepo.URL]("urlPostgresRepo")
-				return valkeyRepo.NewURL(
-					cfg.TTL.URLCache,
-					logger,
-					client,
-					urlRepo,
-				)
-			},
-		},
-		{
-			Key:  "urlService",
-			Deps: []string{"urlValkeyRepo", "clickPostgresRepo"},
-			Ctor: func() any {
-				urlRepo := simpledi.MustGetAs[*valkeyRepo.URL]("urlValkeyRepo")
-				clickRepo := simpledi.MustGetAs[*postgresRepo.Click]("clickPostgresRepo")
-				return service.NewURL(
-					urlRepo,
-					clickRepo,
-				)
-			},
-		},
-		{
-			Key: "ipService",
-			Ctor: func() any {
-				return service.NewIP()
-			},
-		},
-		{
-			Key:  "clickService",
-			Deps: []string{"config", "clickPostgresRepo"},
-			Ctor: func() any {
-				cfg := simpledi.MustGetAs[*config.Config]("config")
-				clickRepo := simpledi.MustGetAs[*postgresRepo.Click]("clickPostgresRepo")
-				return service.NewClick(
-					cfg.Pagination.MinPage,
-					cfg.Pagination.MinSize,
-					cfg.Pagination.MaxSize,
-					clickRepo,
-				)
-			},
-		},
-		{
-			Key:  "loggerMiddleware",
-			Deps: []string{"logger", "ipService"},
-			Ctor: func() any {
-				logger := simpledi.MustGetAs[*slog.Logger]("logger")
-				return middleware.NewLogger(
-					logger,
-				)
-			},
-		},
-		{
-			Key:  "urlHandler",
-			Deps: []string{"urlService", "ipService"},
-			Ctor: func() any {
-				urlService := simpledi.MustGetAs[*service.URL]("urlService")
-				ipService := simpledi.MustGetAs[*service.IP]("ipService")
-				return handler.NewURL(
-					urlService,
-					ipService,
-				)
-			},
-		},
-		{
-			Key:  "clickHandler",
-			Deps: []string{"clickService"},
-			Ctor: func() any {
-				clickService := simpledi.MustGetAs[*service.Click]("clickService")
-				return handler.NewClick(
-					clickService,
-				)
 			},
 		},
 	}

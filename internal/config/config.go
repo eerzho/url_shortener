@@ -8,12 +8,10 @@ import (
 
 type (
 	Config struct {
-		APP        APP
-		HTTP       HTTP
-		Postgres   Postgres
-		Valkey     Valkey
-		TTL        TTL
-		Pagination Pagination
+		APP      APP
+		HTTP     HTTP
+		Postgres Postgres
+		Valkey   Valkey
 	}
 
 	APP struct {
@@ -37,16 +35,6 @@ type (
 
 	Valkey struct {
 		URL string `env:"VALKEY_URL,required"`
-	}
-
-	TTL struct {
-		URLCache time.Duration `env:"TTL_URL_CACHE" envDefault:"24h"`
-	}
-
-	Pagination struct {
-		MinPage int `env:"PAGINATION_MIN_PAGE" envDefault:"1"`
-		MinSize int `env:"PAGINATION_MIN_SIZE" envDefault:"5"`
-		MaxSize int `env:"PAGINATION_MAX_SIZE" envDefault:"200"`
 	}
 )
 
