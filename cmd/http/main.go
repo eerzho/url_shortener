@@ -10,6 +10,7 @@ import (
 	_ "url_shortener/docs"
 	"url_shortener/internal/app"
 	"url_shortener/internal/config"
+	"url_shortener/internal/handler"
 	utilslogger "url_shortener/internal/utils/logger"
 
 	"github.com/eerzho/simpledi"
@@ -37,6 +38,8 @@ func setupServer() *http.Server {
 
 	mux := http.NewServeMux()
 	mux.Handle("/swagger/", swagger.WrapHandler)
+
+	handler.Setup(mux)
 
 	return &http.Server{
 		Handler:      mux,
