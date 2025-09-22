@@ -2,7 +2,6 @@ package valkey
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,114 +12,101 @@ import (
 )
 
 type URL struct {
-	ttlURLCache time.Duration
-	logger      *slog.Logger
-	client      valkeygo.Client
-	reader      repository.URLReader
-	writer      repository.URLWriter
+	ttl           time.Duration
+	logger        *slog.Logger
+	client        valkeygo.Client
+	urlRepository repository.URL
 }
 
 func NewURL(
-	ttlURLCache time.Duration,
+	ttl time.Duration,
 	logger *slog.Logger,
 	client valkeygo.Client,
-	reader repository.URLReader,
-	writer repository.URLWriter,
+	urlRepository repository.URL,
 ) *URL {
 	return &URL{
-		ttlURLCache: ttlURLCache,
-		logger:      logger,
-		client:      client,
-		reader:      reader,
-		writer:      writer,
+		ttl:           ttl,
+		logger:        logger,
+		client:        client,
+		urlRepository: urlRepository,
 	}
 }
 
-func (u *URL) Create(ctx context.Context, longURL, shortCode string) (*model.URL, error) {
-	const op = "repository.valkey.Url.Create"
-	url, err := u.writer.Create(ctx, longURL, shortCode)
+func (u *URL) Create(ctx context.Context, shortCode, originalURL string) (*model.URL, error) {
+	const op = "repository.valkey.URL.Create"
+
+	url, err := u.urlRepository.Create(ctx, shortCode, originalURL)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
-	if err = u.addToCache(ctx, url); err != nil {
-		u.logger.ErrorContext(ctx, "failed to cache url",
+
+	if err := u.setCache(ctx, shortCode, originalURL); err != nil {
+		u.logger.WarnContext(ctx, "failed to set cache",
 			slog.Int("id", url.ID),
 			slog.String("short_code", url.ShortCode),
+			slog.String("original_url", url.OriginalURL),
+			slog.Time("created_at", url.CreatedAt),
+			slog.Time("updated_at", url.UpdatedAt),
 			slog.Any("error", fmt.Errorf("%s: %w", op, err)),
 		)
 	}
+
 	return url, nil
 }
 
-func (u *URL) ExistsByShortCode(ctx context.Context, shortCode string) (bool, error) {
-	if _, err := u.getFromCache(ctx, shortCode); err == nil {
-		return true, nil
-	}
-	return u.reader.ExistsByShortCode(ctx, shortCode)
-}
+func (u *URL) GetOriginalURLByShortCode(ctx context.Context, shortCode string) (string, error) {
+	const op = "repository.valkey.URL.GetOriginalURLByShortCode"
 
-func (u *URL) GetByShortCode(ctx context.Context, shortCode string) (*model.URL, error) {
-	const op = "repository.valkey.Url.GetByShortCode"
-	if url, err := u.getFromCache(ctx, shortCode); err == nil {
-		return url, nil
+	originalURL, err := u.getCache(ctx, shortCode)
+	if err == nil {
+		return originalURL, nil
 	}
-	url, err := u.reader.GetByShortCode(ctx, shortCode)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-	if err = u.addToCache(ctx, url); err != nil {
-		u.logger.ErrorContext(ctx, "failed to cache url",
-			slog.Int("id", url.ID),
-			slog.String("short_code", url.ShortCode),
+
+	if !valkeygo.IsValkeyNil(err) {
+		u.logger.WarnContext(ctx, "failed to get cache",
+			slog.String("short_code", shortCode),
 			slog.Any("error", fmt.Errorf("%s: %w", op, err)),
+			slog.String("original_url", originalURL),
 		)
 	}
-	return url, nil
-}
 
-func (u *URL) GetWithClicksCountByShortCode(ctx context.Context, shortCode string) (*model.URLWithClicksCount, error) {
-	return u.reader.GetWithClicksCountByShortCode(ctx, shortCode)
-}
-
-func (u *URL) addToCache(ctx context.Context, url *model.URL) error {
-	data, err := json.Marshal(url)
+	originalURL, err = u.urlRepository.GetOriginalURLByShortCode(ctx, shortCode)
 	if err != nil {
-		return err
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
-	key := u.buildCacheKey(url.ShortCode)
-	cmd := u.client.
-		B().
-		Set().
-		Key(key).
-		Value(string(data)).
-		Ex(u.ttlURLCache).
-		Build()
-	return u.client.Do(ctx, cmd).Error()
+
+	if err := u.setCache(ctx, shortCode, originalURL); err != nil {
+		u.logger.WarnContext(ctx, "failed to set cache",
+			slog.String("short_code", shortCode),
+			slog.Any("error", fmt.Errorf("%s: %w", op, err)),
+			slog.String("original_url", originalURL),
+		)
+	}
+
+	return originalURL, nil
 }
 
-func (u *URL) getFromCache(ctx context.Context, shortCode string) (*model.URL, error) {
-	key := u.buildCacheKey(shortCode)
-	cmd := u.client.
-		B().
-		Get().
-		Key(key).
-		Build()
+func (u *URL) setCache(ctx context.Context, shortCode, originalURL string) error {
+	key := u.buildKey(shortCode)
+	cmd := u.client.B().Set().Key(key).Value(originalURL).Ex(u.ttl).Build()
+	result := u.client.Do(ctx, cmd)
+	return result.Error()
+}
+
+func (u *URL) getCache(ctx context.Context, shortCode string) (string, error) {
+	key := u.buildKey(shortCode)
+	cmd := u.client.B().Get().Key(key).Build()
 	result := u.client.Do(ctx, cmd)
 	if result.Error() != nil {
-		return nil, result.Error()
+		return "", result.Error()
 	}
-	data, err := result.ToString()
+	value, err := result.ToString()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	var url model.URL
-	err = json.Unmarshal([]byte(data), &url)
-	if err != nil {
-		return nil, err
-	}
-	return &url, nil
+	return value, nil
 }
 
-func (u *URL) buildCacheKey(shortCode string) string {
-	return fmt.Sprintf("url:%s", shortCode)
+func (u *URL) buildKey(shortCode string) string {
+	return fmt.Sprintf("urls:%s", shortCode)
 }

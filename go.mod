@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
-	github.com/eerzho/simpledi v1.1.0
+	github.com/eerzho/simpledi v1.2.0
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/google/uuid v1.6.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -12,7 +12,6 @@ require (
 	github.com/swaggo/http-swagger v1.3.4
 	github.com/swaggo/swag v1.16.4
 	github.com/valkey-io/valkey-go v1.0.62
-	golang.org/x/time v0.12.0
 )
 
 require (

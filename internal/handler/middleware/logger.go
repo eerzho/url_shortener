@@ -9,28 +9,28 @@ import (
 )
 
 type Logger struct {
-	logger    *slog.Logger
-	ipService IPService
+	logger *slog.Logger
 }
 
 func NewLogger(
 	logger *slog.Logger,
-	ipService IPService,
 ) *Logger {
 	return &Logger{
-		logger:    logger,
-		ipService: ipService,
+		logger: logger,
 	}
 }
 
 func (l *Logger) Handle(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		requestID := uuid.New().String()
+
+		requestID := r.Header.Get("X-Request-ID")
+		if requestID == "" {
+			requestID = uuid.NewString()
+		}
 		w.Header().Set("X-Request-ID", requestID)
 
 		logger := l.logger.With(
-			slog.String("ip", l.ipService.GetIP(r.Context(), r)),
 			slog.String("path", r.URL.Path),
 			slog.String("method", r.Method),
 			slog.String("query", r.URL.RawQuery),

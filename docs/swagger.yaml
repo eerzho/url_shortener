@@ -1,49 +1,12 @@
 basePath: /
 definitions:
-  dto.Pagination:
-    properties:
-      page:
-        type: integer
-      size:
-        type: integer
-      total:
-        type: integer
-    type: object
-  model.Click:
-    properties:
-      created_at:
-        type: string
-      id:
-        type: integer
-      ip:
-        type: string
-      url_id:
-        type: integer
-      user_agent:
-        type: string
-    type: object
   model.URL:
     properties:
       created_at:
         type: string
       id:
         type: integer
-      long_url:
-        type: string
-      short_code:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  model.URLWithClicksCount:
-    properties:
-      clicks_count:
-        type: integer
-      created_at:
-        type: string
-      id:
-        type: integer
-      long_url:
+      original_url:
         type: string
       short_code:
         type: string
@@ -52,11 +15,10 @@ definitions:
     type: object
   request.CreateURL:
     properties:
-      long_url:
-        maxLength: 2048
+      original_url:
         type: string
     required:
-    - long_url
+    - original_url
     type: object
   response.Fail:
     properties:
@@ -66,12 +28,6 @@ definitions:
         items:
           type: string
         type: array
-    type: object
-  response.List:
-    properties:
-      data: {}
-      pagination:
-        $ref: '#/definitions/dto.Pagination'
     type: object
   response.Ok:
     properties:
@@ -101,7 +57,7 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.Fail'
-      summary: click short code
+      summary: redirect to url
       tags:
       - url
   /urls:
@@ -138,70 +94,4 @@ paths:
       summary: create url
       tags:
       - url
-  /urls/{short_code}:
-    get:
-      parameters:
-      - description: short code
-        in: path
-        name: short_code
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.Ok'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.URLWithClicksCount'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Fail'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.Fail'
-      summary: url stats
-      tags:
-      - url
-  /urls/{short_code}/clicks:
-    get:
-      consumes:
-      - application/json
-      parameters:
-      - description: short code
-        in: path
-        name: short_code
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.List'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/model.Click'
-                  type: array
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.Fail'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.Fail'
-      summary: get clicks by url
-      tags:
-      - click
 swagger: "2.0"

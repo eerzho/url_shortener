@@ -26,22 +26,31 @@ func main() {
 	logger := utilslogger.NewLogger(os.Getenv("APP_ENV"))
 
 	app.Setup(logger)
-	defer app.Close(logger)
+	defer app.Reset(logger)
+
+	server := setupServer()
+	startServer(logger, server)
+	stopServer(logger, server)
+}
+
+func setupServer() *http.Server {
+	cfg := simpledi.MustGetAs[*config.Config]("config")
 
 	mux := http.NewServeMux()
 	mux.Handle("/swagger/", swagger.WrapHandler)
 
 	handler.Setup(mux)
 
-	cfg := simpledi.MustGetAs[*config.Config]("config")
-	server := &http.Server{
+	return &http.Server{
 		Handler:      mux,
 		Addr:         ":" + cfg.HTTP.Port,
 		ReadTimeout:  cfg.HTTP.ReadTimeout,
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 		IdleTimeout:  cfg.HTTP.IdleTimeout,
 	}
+}
 
+func startServer(logger *slog.Logger, server *http.Server) {
 	go func() {
 		logger.Info("starting http server", slog.String("port", server.Addr))
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -49,6 +58,10 @@ func main() {
 			return
 		}
 	}()
+}
+
+func stopServer(logger *slog.Logger, server *http.Server) {
+	cfg := simpledi.MustGetAs[*config.Config]("config")
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)

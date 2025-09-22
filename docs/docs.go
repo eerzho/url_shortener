@@ -72,122 +72,12 @@ const docTemplate = `{
                 }
             }
         },
-        "/urls/{short_code}": {
-            "get": {
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "url"
-                ],
-                "summary": "url stats",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "short code",
-                        "name": "short_code",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.Ok"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/model.URLWithClicksCount"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Fail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Fail"
-                        }
-                    }
-                }
-            }
-        },
-        "/urls/{short_code}/clicks": {
-            "get": {
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "click"
-                ],
-                "summary": "get clicks by url",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "short code",
-                        "name": "short_code",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.List"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/model.Click"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.Fail"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.Fail"
-                        }
-                    }
-                }
-            }
-        },
         "/{short_code}": {
             "get": {
                 "tags": [
                     "url"
                 ],
-                "summary": "click short code",
+                "summary": "redirect to url",
                 "parameters": [
                     {
                         "type": "string",
@@ -218,40 +108,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.Pagination": {
-            "type": "object",
-            "properties": {
-                "page": {
-                    "type": "integer"
-                },
-                "size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "model.Click": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "ip": {
-                    "type": "string"
-                },
-                "url_id": {
-                    "type": "integer"
-                },
-                "user_agent": {
-                    "type": "string"
-                }
-            }
-        },
         "model.URL": {
             "type": "object",
             "properties": {
@@ -261,30 +117,7 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
-                "long_url": {
-                    "type": "string"
-                },
-                "short_code": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.URLWithClicksCount": {
-            "type": "object",
-            "properties": {
-                "clicks_count": {
-                    "type": "integer"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "long_url": {
+                "original_url": {
                     "type": "string"
                 },
                 "short_code": {
@@ -298,12 +131,11 @@ const docTemplate = `{
         "request.CreateURL": {
             "type": "object",
             "required": [
-                "long_url"
+                "original_url"
             ],
             "properties": {
-                "long_url": {
-                    "type": "string",
-                    "maxLength": 2048
+                "original_url": {
+                    "type": "string"
                 }
             }
         },
@@ -318,15 +150,6 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
-                }
-            }
-        },
-        "response.List": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "pagination": {
-                    "$ref": "#/definitions/dto.Pagination"
                 }
             }
         },

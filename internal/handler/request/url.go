@@ -1,5 +1,5 @@
 package request
 
 type CreateURL struct {
-	LongURL string `json:"long_url" validate:"required,url,max=2048"`
+	OriginalURL string `json:"original_url" validate:"required,url"`
 }
