@@ -43,7 +43,7 @@ func setupServer() *http.Server {
 
 	return &http.Server{
 		Handler:      mux,
-		Addr:         ":" + cfg.HTTP.Port,
+		Addr:         ":80",
 		ReadTimeout:  cfg.HTTP.ReadTimeout,
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 		IdleTimeout:  cfg.HTTP.IdleTimeout,

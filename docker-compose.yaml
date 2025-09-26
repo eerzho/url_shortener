@@ -5,77 +5,40 @@ services:
       context: .
       target: dev
       dockerfile: ./docker/http/Dockerfile
-    environment:
-      APP_ENV: ${APP_ENV}
-
-      HTTP_PORT: ${HTTP_PORT}
-      HTTP_READ_TIMEOUT: ${HTTP_READ_TIMEOUT}
-      HTTP_WRITE_TIMEOUT: ${HTTP_WRITE_TIMEOUT}
-      HTTP_IDLE_TIMEOUT: ${HTTP_IDLE_TIMEOUT}
-      HTTP_REQUEST_TIMEOUT: ${HTTP_REQUEST_TIMEOUT}
-
-      POSTGRES_URL: ${POSTGRES_URL}
-      POSTGRES_MAX_OPEN_CONNS: ${POSTGRES_MAX_OPEN_CONNS}
-      POSTGRES_MAX_IDLE_CONNS: ${POSTGRES_MAX_IDLE_CONNS}
-      POSTGRES_CONN_MAX_LIFETIME: ${POSTGRES_CONN_MAX_LIFETIME}
-
-      VALKEY_URL: ${VALKEY_URL}
-
-      RATE_LIMIT_RPS: ${RATE_LIMIT_RPS}
-      RATE_LIMIT_BURST: ${RATE_LIMIT_BURST}
-      RATE_LIMIT_CACHE_CAPACITY: ${RATE_LIMIT_CACHE_CAPACITY}
-
-      TTL_URL_CACHE: ${TTL_URL_CACHE}
-
-      PAGINATION_MIN_PAGE: ${PAGINATION_MIN_PAGE}
-      PAGINATION_MIN_SIZE: ${PAGINATION_MIN_SIZE}
-      PAGINATION_MAX_SIZE: ${PAGINATION_MAX_SIZE}
-
-      WORKER_POOL_URL_COUNT: ${WORKER_POOL_URL_COUNT}
-      WORKER_POOL_URL_BUFFER_SIZE: ${WORKER_POOL_URL_BUFFER_SIZE}
+    env_file: .env
     ports:
-      - "${HTTP_PORT}:${HTTP_PORT}"
+      - "80:80"
     volumes:
       - .:/app
     restart: unless-stopped
     depends_on:
       - postgres
       - valkey
-      - migrate
-  migrate:
-    container_name: migrate_${APP_NAME}
-    build:
-      context: .
-      dockerfile: ./docker/migrate/Dockerfile
-    environment:
-      DB_URL: ${POSTGRES_URL}
-    volumes:
-      - ./migrations:/migrations
-    restart: no
-    depends_on:
-      - postgres
+
   postgres:
     container_name: postgres_${APP_NAME}
-    image: postgres:15-alpine
+    image: postgres:18.0-alpine3.22
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+
   valkey:
     container_name: valkey_${APP_NAME}
-    image: valkey/valkey:7-alpine
+    image: valkey/valkey:9.0-alpine3.22
     ports:
-      - "${VALKEY_PORT}:${VALKEY_PORT}"
+      - "6379:6379"
     volumes:
       - valkey_data:/data
     restart: unless-stopped
     command: valkey-server --appendonly yes
+
 volumes:
   http_data:
-  postgres_data:
   valkey_data:
+  postgres_data:

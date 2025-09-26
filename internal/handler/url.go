@@ -20,15 +20,15 @@ func NewURL(
 
 // Create godoc
 //
-// @Summary create url
-// @Tags url
-// @Accept json
-// @Produce json
-// @Param input body request.CreateURL true "create url"
-// @Success 201 {object} response.Ok{data=model.URL}
-// @Failure 400 {object} response.Fail
-// @Failure 500 {object} response.Fail
-// @Router /urls [post]
+//	@Summary	create url
+//	@Tags		url
+//	@Accept		json
+//	@Produce	json
+//	@Param		input	body		request.CreateURL	true	"create url"
+//	@Success	201		{object}	response.Ok{data=model.URL}
+//	@Failure	400		{object}	response.Fail
+//	@Failure	500		{object}	response.Fail
+//	@Router		/urls [post].
 func (u *URL) Create(w http.ResponseWriter, r *http.Request) {
 	var req request.CreateURL
 	err := helper.ParseJSON(&req, r.Body)
@@ -51,13 +51,13 @@ func (u *URL) Create(w http.ResponseWriter, r *http.Request) {
 
 // Redirect godoc
 //
-// @Summary redirect to url
-// @Tags url
-// @Param  short_code path string true "short code"
-// @Success 302
-// @Failure 400 {object} response.Fail
-// @Failure 500 {object} response.Fail
-// @Router /{short_code} [get]
+//	@Summary	redirect to url
+//	@Tags		url
+//	@Param		short_code	path	string	true	"short code"
+//	@Success	302
+//	@Failure	400	{object}	response.Fail
+//	@Failure	500	{object}	response.Fail
+//	@Router		/{short_code} [get].
 func (u *URL) Redirect(w http.ResponseWriter, r *http.Request) {
 	original, err := u.urlService.GetOriginalURL(
 		r.Context(),
