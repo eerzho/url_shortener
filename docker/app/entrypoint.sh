@@ -4,4 +4,4 @@ set -e
 task setup
 task -a
 
-exec go run ./cmd/http
+exec go run ./cmd/app/main.go
