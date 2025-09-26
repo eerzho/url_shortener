@@ -1,10 +1,10 @@
 services:
-  http:
-    container_name: http_${APP_NAME}
+  app:
+    container_name: app_${APP_NAME}
     build:
       context: .
       target: dev
-      dockerfile: ./docker/http/Dockerfile
+      dockerfile: ./docker/app/Dockerfile
     env_file: .env
     ports:
       - "80:80"
@@ -39,6 +39,6 @@ services:
     command: valkey-server --appendonly yes
 
 volumes:
-  http_data:
+  app_data:
   valkey_data:
   postgres_data:
